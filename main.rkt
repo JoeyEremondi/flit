@@ -592,21 +592,21 @@
                                                               `(,@xs ,name)
                                                               `(submod ,xs ,name)))
                                                          #t))
-                                     (define typed? (has-submodule? 'plait))
+                                     (define typed? (has-submodule? 'plattur))
                                      (unless typed?
                                        (when (module-declared? (absolute-module-path xs) #t)
                                          (raise-syntax-error #f
-                                                             (if (has-submodule? 'untyped-plait)
-                                                                 "not a typed `plait' module"
-                                                                 "not a `plait' module")
+                                                             (if (has-submodule? 'untyped-plattur)
+                                                                 "not a typed `plattur' module"
+                                                                 "not a `plattur' module")
                                                              stx
                                                              #'mp)))
                                      (fixup-quote
                                       (if typed?
                                           (let ([new-clause
                                                  (if (and (pair? s) (eq? (car s) 'submod))
-                                                     (quasisyntax/loc clause (#,@#'mp plait))
-                                                     (quasisyntax/loc clause (submod mp plait)))])
+                                                     (quasisyntax/loc clause (#,@#'mp plattur))
+                                                     (quasisyntax/loc clause (submod mp plattur)))])
                                             (datum->syntax clause
                                                            (syntax-e new-clause)
                                                            clause
@@ -698,7 +698,7 @@
              (module+ name
                decl ...
                ;; to register implicitly imported types:
-               (begin (require (only-in (submod ".." plait))))
+               (begin (require (only-in (submod ".." plattur))))
                e
                ...))])))]))
 
@@ -801,7 +801,7 @@
      (when (or (null? module-level-expansions)
                (not (equal? (syntax->datum (caar module-level-expansions))
                             (syntax->datum expr))))
-       (error 'plait "unexpected expansion: ~.s" (syntax->datum expr)))
+       (error 'plattur "unexpected expansion: ~.s" (syntax->datum expr)))
      (begin0
        (cdar module-level-expansions)
        (set! module-level-expansions (cdr module-level-expansions)))]
@@ -3311,7 +3311,7 @@
       ;; Export identifiers for untyped use as redirections to the
       ;; submodule:
       (module with-contracts-reference racket/base
-        (require plait/private/contract-support)
+        (require plattur/private/contract-support)
         (define-runtime-module-path-index contracts-submod
           '(submod ".." with-contracts))
         (provide contracts-submod))
@@ -3340,7 +3340,7 @@
                   #`[#,(car tl-thing)
                      #,(gensym)])
                 accessible-tl-types)))
-      (module* #,(if untyped? #'untyped-plait #'plait) #f
+      (module* #,(if untyped? #'untyped-plattur #'plattur) #f
         (begin-for-syntax
           (add-types!
            ;; datatypes:
@@ -3586,4 +3586,4 @@
 ;; ----------------------------------------
 
 (module reader syntax/module-reader
-  plait)
+  plattur)
