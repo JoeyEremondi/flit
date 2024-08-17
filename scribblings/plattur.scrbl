@@ -1,5 +1,5 @@
 #lang scribble/manual
-@(require (for-label (only-meta-in 0 plait))
+@(require (for-label (only-meta-in 0 plattur))
           (for-syntax racket/base)
           scribble/racket
           scribble/example
@@ -16,8 +16,8 @@
       (lambda (stx) #'@racket[syntax-rules])))))
 @(define-r r:lambda r:syntax-rules)
 
-@(define demo (make-base-eval #:lang 'plait))
-@(define demo2 (make-base-eval #:lang 'plait))
+@(define demo (make-base-eval #:lang 'plattur))
+@(define demo2 (make-base-eval #:lang 'plattur))
 
 @(begin
   (define-syntax-rule (define-racket-shared racket-shared)
@@ -29,14 +29,17 @@
 @(define (tutorial tag)
    @margin-note{For an introduction, see the tutorial section @secref[tag].})
 
-@title{Plait Language}
+@title{Plattur Language}
 
-@defmodulelang[plait]
+@defmodulelang[plattur]
 
-The Plait language syntactically resembles the
+The plattur language syntactically resembles the
 @racketmodname[plai] language, which is based on
 @racketmodname[racket], but the type system is close to that of
-@hyperlink["http://smlnj.org/"]{ML}. For a quick introduction, see the
+@hyperlink["http://smlnj.org/"]{ML}. 
+It is based on the @racketmodname[plait] and @racketmodname[plai-typed]
+languages, but with additions to help with teaching typed functional programming.
+For a quick introduction, see the
 @seclink["Tutorial"]{tutorial section} or the
 @hyperlink[tutorial-video-url]{tutorial videos}.
 
@@ -50,10 +53,10 @@ The Plait language syntactically resembles the
 
 @section[#:tag "Definitions"]{Definitions}
 
-The body of a @schememodname[plait] module is a sequence of
+The body of a @schememodname[plattur] module is a sequence of
 definitions, expressions and type declarations. The module implicitly exports all
-top-level definitions. When a @racketmodname[plait] module is
-imported into a module that does not use @racketmodname[plait],
+top-level definitions. When a @racketmodname[plattur] module is
+imported into a module that does not use @racketmodname[plattur],
 the imports have contracts (matching reflecting the exported bindings'
 types).
 
@@ -220,7 +223,7 @@ Imports from each @racket[module-path].
 
 When a @racket[module-path] is not wrapped with @racket[typed-in] or @racket[opaque-type-in], then
 @racket[module-path] must refer to a module that is implemented with
-@racketmodname[plait].
+@racketmodname[plattur].
 
 When @racket[module-path] is wrapped with @racket[typed-in], then only the
 specified @racket[id]s are imported from @racket[module-path], and the
@@ -255,7 +258,7 @@ enclosing module using @racket['@#,racket[id]] or @racket[(submod "."
 id)]:
 
 @racketblock[
- (module sub plait
+ (module sub plattur
    (define n 8))
  (require 'sub)
  (+ n 1)
@@ -1176,15 +1179,15 @@ Converts between a string and a list of characters.
 @tutorial["s-exp-tutorial"]
 
 A @deftech{S-expression} typically represents program text. For example,
-placing a @litchar{'} in from of any @racketmodname[plait]
+placing a @litchar{'} in from of any @racketmodname[plattur]
 expression (which is the same as wrapping it with @racket[quote])
 creates an S-expression that contains the identifiers (as symbols),
 parenthesization (as lists), and other constants as the expression
-text. Various @racketmodname[plait] values, including symbols, numbers,
+text. Various @racketmodname[plattur] values, including symbols, numbers,
 and lists, can be coerced to and from S-expression form.
 
 The representation of an S-expression always reuses some other
-@racketmodname[plait] value, so conversion to and from an S-expression
+@racketmodname[plattur] value, so conversion to and from an S-expression
 is a kind cast. For example, the @racket[s-exp-symbol?] function
 determines whether an S-expression embeds an immediate symbol; in that
 case, @racket[s-exp->symbol] extracts the symbol, while any other
@@ -1621,8 +1624,8 @@ continuation.}
 )]{
 
 These functions have no type, so they cannot be used in a
-@racketmodname[plait] program. They can be used in untyped contexts to
-coerce a @racketmodname[plait] @tech{S-expression} to a plain Racket
+@racketmodname[plattur] program. They can be used in untyped contexts to
+coerce a @racketmodname[plattur] @tech{S-expression} to a plain Racket
 S-expression and vice-versa.}
 
 @deftogether[(
@@ -1631,8 +1634,8 @@ S-expression and vice-versa.}
 )]{
 
 These functions have no type, so they cannot be used in a
-@racketmodname[plait] program. They can be used in untyped contexts to
-coerce a @racketmodname[plait] @tech{tuple} to an immutable vector
+@racketmodname[plattur] program. They can be used in untyped contexts to
+coerce a @racketmodname[plattur] @tech{tuple} to an immutable vector
 and vice-versa.}
 
 @; ----------------------------------------
@@ -1892,22 +1895,22 @@ annotations can help focus the error message.
 @section[#:tag "untyped-and-lazy"]{Untyped, Lazy, and Fuel Modes}
 
 Use @racket[#:untyped] immediately after @racket[@#,hash-lang[]
-@#,racketmodname[plait]] to disable type checking. The syntax of a
-@racketmodname[plait] module is the same with and without
+@#,racketmodname[plattur]] to disable type checking. The syntax of a
+@racketmodname[plattur] module is the same with and without
 @racket[#:untyped], but types are ignored when @racket[#:untyped] is
-specified. An untyped Plait module can interoperate with a typed Plait
+specified. An untyped plattur module can interoperate with a typed plattur
 module, and dynamic checks are inserted at the boundary to protect
 typed functions from abuse by untyped code.
 
 Use @racket[#:lazy] immediately after @racket[@#,hash-lang[]
-@#,racketmodname[plait]] to switch evaluation to lazy mode. The syntax
+@#,racketmodname[plattur]] to switch evaluation to lazy mode. The syntax
 and type system are unchanged, but argument expressions for function
 calls are evaluated only when forced (by a test or by printing,
-ultimately). A lazy Plait module will not interoperate well with an
+ultimately). A lazy plattur module will not interoperate well with an
 eager module.
 
 Use @racket[#:fuel _amount] immediately after @racket[@#,hash-lang[]
-@#,racketmodname[plait]] to specify how much effort should be spent
+@#,racketmodname[plattur]] to specify how much effort should be spent
 resolving potentially cyclic dependencies due to inference of
 polymorphic recursion. The default fuel is @racket[100].
 
