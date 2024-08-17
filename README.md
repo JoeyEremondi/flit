@@ -9,7 +9,7 @@ The name is an acronym for **P**rogramming **L**anguages **A**nd **T**ype **T**h
 To write a program in Plattur, start your Racket file with the line:
 
 ```
- #lang plait
+ #lang plattur
 ```
 
 ## Documentation
