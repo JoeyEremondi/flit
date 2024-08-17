@@ -1,6 +1,6 @@
 #lang setup/infotab
 
-(define collection "plait")
+(define collection "plattur")
 
 (define deps '("base"
                "lazy"
@@ -13,4 +13,4 @@
 
 (define version "1.1")
 
-(define scribblings '(("scribblings/plait.scrbl" (multi-page) (language))))
+(define scribblings '(("scribblings/plattur.scrbl" (multi-page) (language))))
