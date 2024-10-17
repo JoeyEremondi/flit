@@ -25,6 +25,9 @@
          (for-syntax racket/base
                      racket/list
                      racket/syntax
+                     syntax/parse
+                     racket/pretty
+                     racket/port
                      racket/require-transform
                      "private/types.rkt"
                      racket/struct-info
@@ -59,6 +62,7 @@
                      [define-syntax: define-syntax]
                      [define-syntax-rule: define-syntax-rule]
                      [#%app: #%app])
+         TODO ;;JE
          #%datum #%top unquote unquote-splicing
          module submod
          (rename-out [module-begin #%module-begin]
@@ -169,7 +173,10 @@
   (define untyped? #f)
   (define lazy? #f)
   (define fuel 100)
-  (define saw-submodules (make-hasheq)))
+  (define saw-submodules (make-hasheq))
+  (define (log-stx stx [str "In macro:"])
+    (println (list str stx)))
+  (define types-for-locs (make-hash)))
 
 (define-type Optionof
   [none]
@@ -177,8 +184,8 @@
 
 ;; Lazy options don't interoperate at all with eager ones
 (lazy:define-type lazy-Optionof
-  [lazy-none]
-  [lazy-some (v (lambda (x) #t))])
+                  [lazy-none]
+                  [lazy-some (v (lambda (x) #t))])
 
 (define not-there (gensym))
 
@@ -240,101 +247,101 @@
           ;; that the pattern is well-formed:
           (define (s-exp-match? pattern s)
             (cond
-             [(s-exp-list? pattern)
-              (and (s-exp-list? s)
-                   (list-match? (s-exp->list pattern)
-                                (s-exp->list s)))]
-             [(s-exp-number? pattern)
-              (and (s-exp-number? s)
-                   (= (s-exp->number s)
-                      (s-exp->number pattern)))]
-             [(s-exp-boolean? pattern)
-              (and (s-exp-boolean? s)
-                   (eq? (s-exp->boolean s)
-                        (s-exp->boolean pattern)))]
-             [(s-exp-string? pattern)
-              (and (s-exp-string? s)
-                   (equal? (s-exp->string s)
-                           (s-exp->string pattern)))]
-             [(eq? 'ANY (s-exp->symbol pattern))
-              #t]
-             [(eq? 'SYMBOL (s-exp->symbol pattern))
-              (s-exp-symbol? s)]
-             [(eq? 'NUMBER (s-exp->symbol pattern))
-              (s-exp-number? s)]
-             [(eq? 'STRING (s-exp->symbol pattern))
-              (s-exp-string? s)]
-             [else
-              ;; Any other symbol is a literal:
-              (and (s-exp-symbol? s)
-                   (eq? (s-exp->symbol s)
-                        (s-exp->symbol pattern)))]))
+              [(s-exp-list? pattern)
+               (and (s-exp-list? s)
+                    (list-match? (s-exp->list pattern)
+                                 (s-exp->list s)))]
+              [(s-exp-number? pattern)
+               (and (s-exp-number? s)
+                    (= (s-exp->number s)
+                       (s-exp->number pattern)))]
+              [(s-exp-boolean? pattern)
+               (and (s-exp-boolean? s)
+                    (eq? (s-exp->boolean s)
+                         (s-exp->boolean pattern)))]
+              [(s-exp-string? pattern)
+               (and (s-exp-string? s)
+                    (equal? (s-exp->string s)
+                            (s-exp->string pattern)))]
+              [(eq? 'ANY (s-exp->symbol pattern))
+               #t]
+              [(eq? 'SYMBOL (s-exp->symbol pattern))
+               (s-exp-symbol? s)]
+              [(eq? 'NUMBER (s-exp->symbol pattern))
+               (s-exp-number? s)]
+              [(eq? 'STRING (s-exp->symbol pattern))
+               (s-exp-string? s)]
+              [else
+               ;; Any other symbol is a literal:
+               (and (s-exp-symbol? s)
+                    (eq? (s-exp->symbol s)
+                         (s-exp->symbol pattern)))]))
           ;; check a list of s-expr against a list of patterns,
           ;; handling '... among the patterns
           (define (list-match? patterns ses)
             (cond
-             [(empty? patterns)
-              (empty? ses)]
-             [(and (cons? (rest patterns))
-                   (s-exp-symbol? (first (rest patterns)))
-                   (eq? '... (s-exp->symbol (first (rest patterns)))))
-              ;; handle ...
-              (cond
-               [(= (- (length patterns) 2)
-                   (length ses))
-                ;; 0 matches may work
-                (list-match? (rest (rest patterns)) ses)]
-               [(empty? ses)
-                #f]
-               [else
-                ;; Need at least 1 match, then try again:
-                (and (s-exp-match? (first patterns)
-                                   (first ses))
-                     (list-match? patterns
-                                  (rest ses)))])]
-             [(empty? ses)
-              #f]
-             [else
-              (and (s-exp-match? (first patterns)
-                                 (first ses))
-                   (list-match? (rest patterns)
-                                (rest ses)))]))
+              [(empty? patterns)
+               (empty? ses)]
+              [(and (cons? (rest patterns))
+                    (s-exp-symbol? (first (rest patterns)))
+                    (eq? '... (s-exp->symbol (first (rest patterns)))))
+               ;; handle ...
+               (cond
+                 [(= (- (length patterns) 2)
+                     (length ses))
+                  ;; 0 matches may work
+                  (list-match? (rest (rest patterns)) ses)]
+                 [(empty? ses)
+                  #f]
+                 [else
+                  ;; Need at least 1 match, then try again:
+                  (and (s-exp-match? (first patterns)
+                                     (first ses))
+                       (list-match? patterns
+                                    (rest ses)))])]
+              [(empty? ses)
+               #f]
+              [else
+               (and (s-exp-match? (first patterns)
+                                  (first ses))
+                    (list-match? (rest patterns)
+                                 (rest ses)))]))
 
           ;; check that `pattern' is well-formed:
           (define (check-pattern pattern)
             (cond
-             [(s-exp-list? pattern)
-              (check-patterns (s-exp->list pattern) #f)]
-             [(or (s-exp-boolean? pattern)
-                  (s-exp-number? pattern)
-                  (s-exp-string? pattern))
-              (void)]
-             [(not (s-exp-symbol? pattern))
-              (error 's-exp-match? 
-                     (string-append "bad pattern: "
-                                    (to-string pattern)))]
-             [(eq? '... (s-exp->symbol pattern))
-              ;; if `check-patterns' didn't see it, it's misplaced
-              (error 's-exp-shape? "misplaced `...' in pattern")]
-             [else 
-              ;; any other symbol is ok --- either special or literal
-              (void)]))
+              [(s-exp-list? pattern)
+               (check-patterns (s-exp->list pattern) #f)]
+              [(or (s-exp-boolean? pattern)
+                   (s-exp-number? pattern)
+                   (s-exp-string? pattern))
+               (void)]
+              [(not (s-exp-symbol? pattern))
+               (error 's-exp-match? 
+                      (string-append "bad pattern: "
+                                     (to-string pattern)))]
+              [(eq? '... (s-exp->symbol pattern))
+               ;; if `check-patterns' didn't see it, it's misplaced
+               (error 's-exp-shape? "misplaced `...' in pattern")]
+              [else 
+               ;; any other symbol is ok --- either special or literal
+               (void)]))
 
           ;; check that a list of patterns is ok, possibly with
           ;; `...', but only one `...':
           (define (check-patterns patterns saw-dots?)
             (cond
-             [(empty? patterns) (void)]
-             [(and (cons? (rest patterns))
-                   (s-exp-symbol? (first (rest patterns)))
-                   (eq? '... (s-exp->symbol (first (rest patterns)))))
-              (if saw-dots?
-                  (error 's-exp-shape? "multiple `...' in pattern")
-                  (check-patterns (rest (rest patterns)) #t))]
-             [else
-              (begin
-                (check-pattern (first patterns))
-                (check-patterns (rest patterns) saw-dots?))]))]
+              [(empty? patterns) (void)]
+              [(and (cons? (rest patterns))
+                    (s-exp-symbol? (first (rest patterns)))
+                    (eq? '... (s-exp->symbol (first (rest patterns)))))
+               (if saw-dots?
+                   (error 's-exp-shape? "multiple `...' in pattern")
+                   (check-patterns (rest (rest patterns)) #t))]
+              [else
+               (begin
+                 (check-pattern (first patterns))
+                 (check-patterns (rest patterns) saw-dots?))]))]
     (begin
       (check-pattern pattern)
       (s-exp-match? pattern s))))
@@ -536,11 +543,11 @@
                                              (or (not (identifier? #'something))
                                                  (not (free-identifier=? #'something #':))))
                                         (raise-syntax-error
-                                           #f
-                                           (format "expected a colon after the identifier `~s'"
-                                                   (syntax-e #'id))
-                                           clause
-                                           #'something)]
+                                         #f
+                                         (format "expected a colon after the identifier `~s'"
+                                                 (syntax-e #'id))
+                                         clause
+                                         #'something)]
                                        [_ (raise-syntax-error
                                            #f
                                            "expected a specification of the form [<id> : <type>]"
@@ -713,28 +720,28 @@
                      (include-at/relative-to orig-stx orig-stx spec)))]))))
 
 (begin-for-syntax 
- (struct typed-macro (proc)
-   #:property prop:procedure 0)
- (define macro-inspector (current-code-inspector))
+  (struct typed-macro (proc)
+    #:property prop:procedure 0)
+  (define macro-inspector (current-code-inspector))
 
- (define module-level-expansions null)
+  (define module-level-expansions null)
 
- (define (stash-and-add-begin proc)
-   (lambda (stx)
-     (define result (proc stx))
-     (when (eq? (syntax-local-context) 'module)
-       ;; We need to save the expansion so that we map macro-introduced
-       ;; defined identifiers in the environment as the actually bound
-       ;; identifier, and so that (in the macro of a macro-defining macro)
-       ;; we get expansions that refer to those identifiers:
-       (set! module-level-expansions
-             (cons (cons stx (syntax-local-introduce (disarm result)))
-                   module-level-expansions)))
-     (if (syntax? result)
-         ;; Insert a `begin' wrapper so we can `local-expand' just once:
-         #`(begin #,result)
-         ;; Otherwise, let expander report the error:
-         result))))
+  (define (stash-and-add-begin proc)
+    (lambda (stx)
+      (define result (proc stx))
+      (when (eq? (syntax-local-context) 'module)
+        ;; We need to save the expansion so that we map macro-introduced
+        ;; defined identifiers in the environment as the actually bound
+        ;; identifier, and so that (in the macro of a macro-defining macro)
+        ;; we get expansions that refer to those identifiers:
+        (set! module-level-expansions
+              (cons (cons stx (syntax-local-introduce (disarm result)))
+                    module-level-expansions)))
+      (if (syntax? result)
+          ;; Insert a `begin' wrapper so we can `local-expand' just once:
+          #`(begin #,result)
+          ;; Otherwise, let expander report the error:
+          result))))
 
 (define-syntax define-syntax:
   (check-top
@@ -779,15 +786,15 @@
 (define-for-syntax (disarm stx)
   (let loop ([e stx])
     (cond
-     [(syntax? e) 
-      (define stx (syntax-disarm e macro-inspector))
-      (datum->syntax stx
-                     (loop (syntax-e stx))
-                     stx
-                     stx)]
-     [(pair? e) (cons (loop (car e)) (loop (cdr e)))]
-     [(vector? e) (list->vector (map loop (vector->list e)))]
-     [else e])))
+      [(syntax? e) 
+       (define stx (syntax-disarm e macro-inspector))
+       (datum->syntax stx
+                      (loop (syntax-e stx))
+                      stx
+                      stx)]
+      [(pair? e) (cons (loop (car e)) (loop (cdr e)))]
+      [(vector? e) (list->vector (map loop (vector->list e)))]
+      [else e])))
 
 (define-for-syntax (local-expand-typed expr)
   (define stx (local-expand expr 'expression #f))
@@ -810,21 +817,21 @@
 (define-for-syntax (expand-includes l)
   (let loop ([l l])
     (cond
-     [(null? l) null]
-     [else
-      (syntax-case (car l) (include: splice:)
-        [(include: spec)
-         (append
-          (cdr (syntax->list (local-expand (car l) (syntax-local-context) #f)))
-          (loop (cdr l)))]
-        [(splice: e ...)
-         (loop (append (syntax->list #'(e ...)) (cdr l)))]
-        [(id . _)
-         (and (identifier? #'id)
-              (typed-macro? (syntax-local-value #'id (lambda () #f))))
-         (loop (cons (local-expand-typed-toplevel (car l))
-                     (cdr l)))]
-        [_ (cons (car l) (loop (cdr l)))])])))
+      [(null? l) null]
+      [else
+       (syntax-case (car l) (include: splice:)
+         [(include: spec)
+          (append
+           (cdr (syntax->list (local-expand (car l) (syntax-local-context) #f)))
+           (loop (cdr l)))]
+         [(splice: e ...)
+          (loop (append (syntax->list #'(e ...)) (cdr l)))]
+         [(id . _)
+          (and (identifier? #'id)
+               (typed-macro? (syntax-local-value #'id (lambda () #f))))
+          (loop (cons (local-expand-typed-toplevel (car l))
+                      (cdr l)))]
+         [_ (cons (car l) (loop (cdr l)))])])))
 
 (define-syntax splice: 
   (check-top
@@ -915,6 +922,107 @@
             (syntax/loc stx
               (lambda (arg ...) (#%expression expr))))])))))
 
+;;JE
+(begin-for-syntax
+  (struct command (name module-path function arguments) #:prefab))
+
+
+;; For more control over the placement of TODOs, use the located struct.
+;; For the ability to write separate summaries and detailed TODOs, use the todo-item struct.
+(begin-for-syntax
+  (struct located (loc value) #:prefab)
+  (struct todo-item (full summary) #:prefab))
+
+;; The simplest way to attach TODOs is to attach a string to the 'todo syntax
+;; property.
+(define-syntax (TODO stx)
+  (syntax-parse stx
+  
+    [(_)
+     (log-stx stx "TODO singleton")
+  (define typeCtx (hash-ref types-for-locs (syntax-position stx)))
+  (define ty (car typeCtx))
+  ;(define ctx (cdr typeCtx))
+  (define ctx (make-hash))
+  (define type-str (format "~a" (pretty-format ((type->datum ctx) ty))))
+  (define item (todo-item "Foo" type-str))
+     ;; Expand a TODO to a runtime error
+     (define runtime
+       (syntax/loc stx
+         (error "TODO")))
+     ;; Attach a notice that it is a TODO to be filled out
+     (syntax-property
+      (syntax-property
+       runtime
+       'todo item)
+      'editing-command (command "Replace with error" "test-command.rkt" 'replace-with-error '()))]
+    [_ (raise-syntax-error #f "TODO does not take any arguments" stx)]))
+
+
+
+
+
+(require racket/stxparam racket/splicing)
+
+;; This example uses a syntax parameter to propagate the surrounding expression
+;; context, attaching the todo-item to the context if one exists.
+(define-syntax-parameter definition-context #f)
+
+(define-syntax (define/todos stx)
+  (syntax-parse stx
+    [(_ x e)
+     (with-syntax ([ctx stx])
+       (syntax/loc stx
+         (splicing-syntax-parameterize ([definition-context #'ctx])
+           (define x e))))]))
+
+(define-syntax (inner-TODO stx)
+  (define ctx (or (syntax-parameter-value #'definition-context) stx))
+  (syntax-parse stx
+    [(_ msg:str)
+     (define item
+       (located ctx
+                (todo-item (syntax->datum #'msg)
+                           (syntax-parse ctx
+                             #:literals (define/todos)
+                             [(define/todos x e) (syntax->datum #'x)]
+                             [_ (syntax->datum #'msg)]))))
+     (syntax-property (syntax/loc stx (error 'inner-todo msg)) 'todo item)]))
+
+
+
+
+;;; Example of an editing command without a goal.
+(define-syntax (with-command stx)
+  (syntax-case stx ()
+    [(_ e)
+     (syntax-property #'e
+                      'editing-command
+                      (command "Double" "test-command.rkt" 'double '()))]))
+
+
+(define-syntax (TODO-bindings stx)
+  (syntax-case stx ()
+    [(_ e ...)
+     ;; syntax-debug-info returns information about macro expansion contexts.
+     ;; It will often let you get local variables in #lang racket! See the docs
+     ;; for more information about syntax-debug-info.
+     (let* ((info (syntax-debug-info stx (syntax-local-phase-level) #t))
+            (bindings (hash-ref info 'bindings '())))
+       (let* ((details (with-output-to-string
+                         (lambda ()
+                           (printf "Local vars:\n")
+                           (for ([b bindings])
+                             (let ((name (hash-ref b 'name #f))
+                                   (local? (hash-ref b 'local #f)))
+                               (when (and name local?)
+                                 (printf " ~a\n" name)))))))
+              (foo (println details)))
+         (syntax-property #'(error 'TODO/bindings)
+                          'todo (todo-item details "TODO with bindings"))))]))
+
+
+
 (define-syntax (#%app: stx)
   (syntax-case stx ()
     [(_ e ...)
@@ -923,30 +1031,30 @@
          (syntax/loc stx (#%app e ...)))]))
 
 (begin-for-syntax
- ;; Used to declare a variant name so that `shared' can create instances
- (struct constructor-syntax (id selectors mutators)
-   #:property prop:set!-transformer
-   (lambda (c stx)
-     (with-syntax ([id (syntax-property (constructor-syntax-id c)
-                                        'constructor-for
-                                        (syntax-case stx (set!)
-                                          [(set! id . _) #'id]
-                                          [(id . _) #'id]
-                                          [_ stx]))])
-       (syntax-case stx (set!)
-         [(set! _ rhs) (syntax/loc stx (set! id rhs))]
-         [(_ arg ...) (syntax/loc stx (#%app: id arg ...))]
-         [_ #'id])))
-   #:property prop:struct-info
-   (lambda (c)
-     (list #f 
-           (constructor-syntax-id c)
-           #f
-           (reverse (constructor-syntax-selectors c))
-           (reverse (constructor-syntax-mutators c))
-           #f)))
- (struct reprovided-constructor-syntax (id transformer)
-   #:property prop:procedure (struct-field-index transformer)))
+  ;; Used to declare a variant name so that `shared' can create instances
+  (struct constructor-syntax (id selectors mutators)
+    #:property prop:set!-transformer
+    (lambda (c stx)
+      (with-syntax ([id (syntax-property (constructor-syntax-id c)
+                                         'constructor-for
+                                         (syntax-case stx (set!)
+                                           [(set! id . _) #'id]
+                                           [(id . _) #'id]
+                                           [_ stx]))])
+        (syntax-case stx (set!)
+          [(set! _ rhs) (syntax/loc stx (set! id rhs))]
+          [(_ arg ...) (syntax/loc stx (#%app: id arg ...))]
+          [_ #'id])))
+    #:property prop:struct-info
+    (lambda (c)
+      (list #f 
+            (constructor-syntax-id c)
+            #f
+            (reverse (constructor-syntax-selectors c))
+            (reverse (constructor-syntax-mutators c))
+            #f)))
+  (struct reprovided-constructor-syntax (id transformer)
+    #:property prop:procedure (struct-field-index transformer)))
 
 (define-for-syntax expand-define-type
   (lambda (stx)
@@ -1130,15 +1238,15 @@
             [(let*) (let loop ([ids ids]
                                [rhss (syntax->list #'(rhs ...))])
                       (cond
-                       [(empty? ids) #'body]
-                       [else (with-syntax ([body (loop (cdr ids) (cdr rhss))]
-                                           [id (car ids)]
-                                           [rhs (car rhss)]
-                                           [tmp (car (generate-temporaries (list (car ids))))])
-                               (syntax/loc stx
-                                 (local: [(define: tmp rhs)]
-                                         (local: [(define: id tmp)]
-                                                 body))))]))]))]))))
+                        [(empty? ids) #'body]
+                        [else (with-syntax ([body (loop (cdr ids) (cdr rhss))]
+                                            [id (car ids)]
+                                            [rhs (car rhss)]
+                                            [tmp (car (generate-temporaries (list (car ids))))])
+                                (syntax/loc stx
+                                  (local: [(define: tmp rhs)]
+                                          (local: [(define: id tmp)]
+                                                  body))))]))]))]))))
 
 (define-syntax letrec: (make-let 'letrec))
 (define-syntax let: (make-let 'let))
@@ -1379,14 +1487,14 @@
               (equal? '(empty cons) done))
           #`(let ([v expr])
               (#,(if lazy? #'lazy:cond #'cond)
-                #,@(for/list ([clause (in-list clauses)])
-                     (syntax-case clause (else empty cons:)
-                       [[else ans] clause]
-                       [[empty ans] #'[(#%app: empty? v) ans]]
-                       [[(cons: id1 id2) ans]
-                        #'[(#%app: pair? v) (let ([id1 (first: v)]
-                                                  [id2 (rest: v)])
-                                              ans)]]))))]
+               #,@(for/list ([clause (in-list clauses)])
+                    (syntax-case clause (else empty cons:)
+                      [[else ans] clause]
+                      [[empty ans] #'[(#%app: empty? v) ans]]
+                      [[(cons: id1 id2) ans]
+                       #'[(#%app: pair? v) (let ([id1 (first: v)]
+                                                 [id2 (rest: v)])
+                                             ans)]]))))]
          [else
           (raise-syntax-error #f
                               (format "missing `~a` clause"
@@ -1587,9 +1695,9 @@
      (syntax-case stx ()
        [(_ id expr)
         (if (identifier? #'id)
-          (with-syntax ([set! (if lazy? #'lazy:set! #'set!)])
-            (syntax/loc stx
-              (set! id expr)))
+            (with-syntax ([set! (if lazy? #'lazy:set! #'set!)])
+              (syntax/loc stx
+                (set! id expr)))
             (raise-syntax-error #f
                                 "expected an identifier"
                                 stx
@@ -1662,12 +1770,12 @@
 
 (define-for-syntax (rename-ids ids expr)
   (cond
-   [(null? ids) expr]
-   [else
-    (define d (syntax-local-make-definition-context))
-    (syntax-local-bind-syntaxes	ids #f d)
-    (internal-definition-context-seal d)
-    (internal-definition-context-apply d expr)]))
+    [(null? ids) expr]
+    [else
+     (define d (syntax-local-make-definition-context))
+     (syntax-local-bind-syntaxes	ids #f d)
+     (internal-definition-context-seal d)
+     (internal-definition-context-apply d expr)]))
 
 (define-for-syntax (extract-definition-ids defn)
   (syntax-case defn (: define-type: define: define-values: 
@@ -1711,7 +1819,7 @@
 ;; responsible for renaming at local-binding forms:
 (define-for-syntax (rename expr)
   (syntax-case expr (: lambda: local: letrec: let: let*: shared:
-                       type-case:)
+                       type-case: TODO) ;;JE
     [(lambda: (arg ...) . _)
      (rename-ids (map (lambda (arg)
                         (syntax-case arg (:)
@@ -1735,12 +1843,12 @@
     [(type-case: type val clause ...)
      (quasisyntax/loc expr
        (#,(car (syntax-e expr)) type val
-        #,@(map (lambda (clause)
-                  (syntax-case clause ()
-                    [[(variant id ...) ans]
-                     (rename-ids (syntax->list #'(id ...)) clause)]
-                    [_ clause]))
-                (syntax->list #'(clause ...)))))]
+                                #,@(map (lambda (clause)
+                                          (syntax-case clause ()
+                                            [[(variant id ...) ans]
+                                             (rename-ids (syntax->list #'(id ...)) clause)]
+                                            [_ clause]))
+                                        (syntax->list #'(clause ...)))))]
     [_ expr]))
 
 (define-for-syntax (typecheck-defns tl datatypes opaques aliases init-env init-variants just-id? top?
@@ -1773,13 +1881,13 @@
                                       (let loop ([old-ids old-ids]
                                                  [new-ids new-ids])
                                         (cond
-                                         [(null? old-ids) p]
-                                         [(free-identifier=? (car old-ids) (car p))
-                                          (cons (car new-ids) (cdr p))]
-                                         [(and cdrs-too? 
-                                               (free-identifier=? (car old-ids) (cdr p)))
-                                          (cons (car p) (car new-ids))]
-                                         [else (loop (cdr old-ids) (cdr new-ids))])))
+                                          [(null? old-ids) p]
+                                          [(free-identifier=? (car old-ids) (car p))
+                                           (cons (car new-ids) (cdr p))]
+                                          [(and cdrs-too? 
+                                                (free-identifier=? (car old-ids) (cdr p)))
+                                           (cons (car p) (car new-ids))]
+                                          [else (loop (cdr old-ids) (cdr new-ids))])))
                                     l))]))]
          [opaques (append (apply
                            append
@@ -2097,7 +2205,7 @@
                            tl))]
          [is-value? (lambda (expr)
                       (let loop ([expr expr])
-                        (syntax-case expr (lambda: list: values: cons: empty hash: quote: none: some:)
+                        (syntax-case expr (lambda: list: values: cons: empty hash: quote: none: some: TODO)
                           [(lambda: . _) #t]
                           [(values: a ...)
                            (andmap loop (syntax->list #'(a ...)))]
@@ -2149,7 +2257,7 @@
                    append
                    (map
                     (lambda (stx)
-                      (syntax-case stx (require: define: define-values: define-type: lambda: :)
+                      (syntax-case stx (require: define: define-values: define-type: lambda: TODO :)
                         [(define-values: (id ...) rhs)
                          (let ([val? (is-value? #'rhs)]
                                [tvars-box (box base-tvars)])
@@ -2338,9 +2446,9 @@
           (map
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
-               (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
+               (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
                                              define-type-alias define-syntax: define-syntax-rule:
-                                             lambda: begin: local: letrec: let: let*: 
+                                             lambda: begin: local: letrec: let: let*: TODO ;;JE
                                              shared: parameterize:
                                              begin: cond: case: if: when: unless:
                                              or: and: set!: trace:
@@ -2349,6 +2457,7 @@
                                              has-type ....
                                              list: vector: values: try
                                              module+: module)
+                 [TODO (gen-tvar exp)] ;JE
                  [(module+: name e ...)
                   (let*-values ([(datatypes dt-len opaques o-len aliases a-len
                                             variants v-len env e-len
@@ -2471,6 +2580,7 @@
                                              tvar))
                               id-ids
                               id-types))]
+                
                  [(lambda: (arg ...) : type body)
                   (let ([tvars-box (box (unbox tvars-box))])
                     (let ([arg-ids (map (lambda (arg)
@@ -2633,6 +2743,7 @@
                                 (unify! id (gen-tvar id #t) (typecheck id env tvars-box)))
                               ids)
                     (make-tupleof expr null))]
+                 
                  [(type-case: (listof: elem-type) val clause ...)
                   ;; special handling for `listof` case
                   (syntax-case expr ()
@@ -2814,25 +2925,28 @@
                     res-type)]
                  [_else
                   (cond
-                   [(identifier? expr)
-                    (let ([t (lookup expr env)])
-                      (if just-id?
-                          t
-                          (at-source (poly-instance t) expr)))]
-                   [(boolean? (syntax-e expr))
-                    (make-bool expr)]
-                   [(number? (syntax-e expr))
-                    (make-num expr)]
-                   [(string? (syntax-e expr))
-                    (make-str expr)]
-                   [(char? (syntax-e expr))
-                    (make-chr expr)]
-                   [(eq? (void) (syntax-e expr))
-                    (void)]
-                   [else
-                    (raise-syntax-error #f
-                                        "don't know how to typecheck"
-                                        expr)])])))
+                    [(identifier? expr)
+                     (let ([t (lookup expr env)])
+                       (if just-id?
+                           t
+                           (at-source (poly-instance t) expr)))]
+                    [(boolean? (syntax-e expr))
+                     (make-bool expr)]
+                    [(number? (syntax-e expr))
+                     (make-num expr)]
+                    [(string? (syntax-e expr))
+                     (make-str expr)]
+                    [(char? (syntax-e expr))
+                     (make-chr expr)]
+                    [(eq? (void) (syntax-e expr))
+                     (void)]
+                    [else
+                     (raise-syntax-error #f
+                                         "don't know how to typecheck"
+                                         expr)])])])
+                 (begin
+                   (hash-set! types-for-locs (syntax-position expr) (cons ret env))
+                   ret))))
            tl)])
     (set-box! let-polys (cons def-env (unbox let-polys)))
     (define poly-env
@@ -3003,8 +3117,8 @@
                                                        (list STR)
                                                        (make-sexp #f)))
                      (cons #'s-exp-boolean? (make-arrow #f 
-                                                       (list (make-sexp #f))
-                                                       B))
+                                                        (list (make-sexp #f))
+                                                        B))
                      (cons #'s-exp->boolean (make-arrow #f 
                                                         (list (make-sexp #f))
                                                         BOOL))
@@ -3015,8 +3129,8 @@
                                                      (list (make-sexp #f))
                                                      B))
                      (cons #'s-exp->list (make-arrow #f 
-                                                       (list (make-sexp #f))
-                                                       (make-listof #f (make-sexp #f))))
+                                                     (list (make-sexp #f))
+                                                     (make-listof #f (make-sexp #f))))
                      (cons #'list->s-exp (make-arrow #f 
                                                      (list (make-listof #f (make-sexp #f)))
                                                      (make-sexp #f)))
@@ -3210,8 +3324,8 @@
                                                       (list (make-listof #f CHAR))
                                                       STR))
                      (cons #'none: (POLY a (make-arrow #f 
-                                                      (list) 
-                                                      (make-datatype #f #'Optionof (list a)))))
+                                                       (list) 
+                                                       (make-datatype #f #'Optionof (list a)))))
                      (cons #'some: (POLY a (make-arrow #f 
                                                        (list a) 
                                                        (make-datatype #f #'Optionof (list a)))))
@@ -3408,19 +3522,19 @@
     (for/list ([id (in-list ids)])
       (define (redirect stx)
         (cond
-         [(identifier? stx)
-          (with-syntax ([mp (collapse-module-path-index/relative
-                             submod-modidx)]
-                        [id (datum->syntax id (syntax-e id) stx stx)])
-            #`(let ()
-                (local-require (only-in mp [#,(datum->syntax #'mp (syntax-e #'id)) id]))
-                id))]
-         [else
-          (datum->syntax stx
-                         (cons (redirect (car (syntax-e stx)))
-                               (cdr (syntax-e stx)))
-                         stx
-                         stx)]))
+          [(identifier? stx)
+           (with-syntax ([mp (collapse-module-path-index/relative
+                              submod-modidx)]
+                         [id (datum->syntax id (syntax-e id) stx stx)])
+             #`(let ()
+                 (local-require (only-in mp [#,(datum->syntax #'mp (syntax-e #'id)) id]))
+                 id))]
+          [else
+           (datum->syntax stx
+                          (cons (redirect (car (syntax-e stx)))
+                                (cdr (syntax-e stx)))
+                          stx
+                          stx)]))
       (define id-val (syntax-local-value id (lambda () #f)))
       (cond
         [(constructor-syntax? id-val)
@@ -3453,7 +3567,9 @@
 ;; ----------------------------------------
 
 (define-syntax (top-interaction stx)
-  (set! lazy? orig-is-lazy?)
+  (if (not module-loaded?) (error "Syntax and/or type errors in module, REPL disabled.")
+  (begin
+    (set! lazy? orig-is-lazy?)
   (set! untyped? orig-is-untyped?)
   (set! fuel orig-fuel)
   (syntax-case stx ()
@@ -3504,7 +3620,7 @@
                #'body
                #'(begin
                    (print-type 'ty)
-                   body)))))]))
+                   body)))))]))))
 
 (define (print-type t)
   (parameterize ([pretty-print-print-line
@@ -3547,6 +3663,9 @@
          (filter-keywords! #'forms))]
       [_ forms])))
 
+
+(define-for-syntax module-loaded? #f)
+
 (define-syntax (module-begin stx)
   (unless (eq? 'module-begin (syntax-local-context))
     (raise-syntax-error
@@ -3555,19 +3674,23 @@
      stx))
   (syntax-case stx ()
     [(_ form ...)
-     (with-syntax ([(form ...) (filter-keywords! #'(form ...))])
-       (with-syntax ([end (cond
-                            [is-submodule?
-                             #'(begin)]
-                            [untyped?
-                             #`(begin
-                                 (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
-                                 (provide #,(datum->syntax stx `(,#'all-defined-out))))]
-                            [else
-                             #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
-         #`(printing-module-begin
-            (drop-type-decl form) ...
-            end)))]))
+     (let ([ret
+       (with-syntax ([(form ...) (filter-keywords! #'(form ...))])
+         (with-syntax ([end (cond
+                              [is-submodule?
+                               #'(begin)]
+                              [untyped?
+                               #`(begin
+                                   (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
+                                   (provide #,(datum->syntax stx `(,#'all-defined-out))))]
+                              [else
+                               #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
+           #`(printing-module-begin
+              (drop-type-decl form) ...
+              end)))])
+       (begin (set! module-loaded? #t)
+              (println "Setting module to loaded")
+              ret))]))
 
 (define-syntax drop-type-decl
   (syntax-rules (:)
@@ -3587,3 +3710,4 @@
 
 (module reader syntax/module-reader
   plattur)
+
