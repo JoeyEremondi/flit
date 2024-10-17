@@ -24,6 +24,7 @@
          "private/force.rkt"
          (for-syntax racket/base
                      racket/list
+                     racket/string
                      racket/syntax
                      syntax/parse
                      syntax/transformer
@@ -934,14 +935,24 @@
   (struct located (loc value) #:prefab)
   (struct todo-item (full summary) #:prefab))
 
+(define-for-syntax (pretty-type ty)
+  (substring (format "~v" ((type->datum (make-hash)) ty)) 1))
+
+(define-for-syntax (pretty-env env)
+  (string-join
+                        (map
+                         (lambda (env-entry)
+                           (format "~a : ~a" (syntax->datum (car env-entry)) (pretty-type (cdr env-entry))))
+                         env)
+                        "\n"))
+
 (define-for-syntax (make-TODO stx pos)
-   (define typeCtx (hash-ref types-for-locs pos))
-   (define ty (car typeCtx))
-   (define env (cdr typeCtx))
-   (define format-ctx (make-hash))
-   (define type-str (substring (format "~v" ((type->datum format-ctx) ty)) 1))
-   (define context-str (format "~v" env))
-   (define item (todo-item context-str type-str))
+   (define tyEnv (hash-ref types-for-locs pos))
+   (define ty (car tyEnv))
+   (define env (cdr tyEnv))
+   (define ty-str (pretty-type ty))
+   (define context-str (string-append (pretty-env env) "\n__________________________________________________\nTODO : " ty-str))
+   (define item (todo-item context-str ty-str))
    ;; Expand a TODO to a runtime error
    (define runtime
      (syntax/loc stx
@@ -2451,6 +2462,7 @@
          [env (append def-env
                       req-env
                       init-env)]
+         [start-env env]
          [let-polys (or orig-let-polys (box null))]
          ;; typecheck the sequence:
          [types
@@ -2956,8 +2968,10 @@
                                                     "don't know how to typecheck"
                                                     expr)])])])
                  (begin
-                   (hash-set! types-for-locs (syntax-position expr) (cons ret env))
-                   ret))))
+                     (define num-locals (- (length env) (length start-env)))
+                      (define local-env (take env num-locals))
+                     (hash-set! types-for-locs (syntax-position expr) (cons ret local-env))
+                          ret))))
            tl)])
     (set-box! let-polys (cons def-env (unbox let-polys)))
     (define poly-env

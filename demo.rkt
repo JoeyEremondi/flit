@@ -8,7 +8,9 @@
 ;  (TODO))
 
 (define (f [x : 'b] [y : Foo]) : Number
-  (+ (if TODO 3 (TODO x y #t)) TODO))
+  (+ (if (type-case Foo y
+           [(Bar z) #t]
+           [(Baz z) TODO]) 3 (TODO x y #t)) TODO))
 
 ;(define zz : Boolean TODO)
 
