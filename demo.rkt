@@ -8,7 +8,7 @@
 ;  (TODO))
 
 (define (f [x : 'b] [y : Foo]) : Number
-  (+ (if #t 3 ((TODO) y)) 3))
+  (+ (if TODO 3 (TODO x y #t)) TODO))
 
 ;(define zz : Boolean TODO)
 

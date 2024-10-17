@@ -26,6 +26,7 @@
                      racket/list
                      racket/syntax
                      syntax/parse
+                     syntax/transformer
                      racket/pretty
                      racket/port
                      racket/require-transform
@@ -933,32 +934,42 @@
   (struct located (loc value) #:prefab)
   (struct todo-item (full summary) #:prefab))
 
+(define-for-syntax (make-TODO stx pos)
+   (define typeCtx (hash-ref types-for-locs pos))
+   (define ty (car typeCtx))
+   (define env (cdr typeCtx))
+   (define format-ctx (make-hash))
+   (define type-str (substring (format "~v" ((type->datum format-ctx) ty)) 1))
+   (define context-str (format "~v" env))
+   (define item (todo-item context-str type-str))
+   ;; Expand a TODO to a runtime error
+   (define runtime
+     (syntax/loc stx
+       (error "TODO")))
+   ;; Attach a notice that it is a TODO to be filled out
+   (syntax-property
+    (syntax-property
+     runtime
+     'todo item)
+    'editing-command (command "Replace with error" "test-command.rkt" 'replace-with-error '())))
+
 ;; The simplest way to attach TODOs is to attach a string to the 'todo syntax
 ;; property.
 (define-syntax (TODO stx)
+  (define stx-pos (syntax-position stx))
   (syntax-parse stx
-  
-    [(_)
-     (log-stx stx "TODO singleton")
-  (define typeCtx (hash-ref types-for-locs (syntax-position stx)))
-  (define ty (car typeCtx))
-  ;(define ctx (cdr typeCtx))
-  (define ctx (make-hash))
-  (define type-str (format "~a" (pretty-format ((type->datum ctx) ty))))
-  (define item (todo-item "Foo" type-str))
-     ;; Expand a TODO to a runtime error
-     (define runtime
-       (syntax/loc stx
-         (error "TODO")))
-     ;; Attach a notice that it is a TODO to be filled out
-     (syntax-property
-      (syntax-property
-       runtime
-       'todo item)
-      'editing-command (command "Replace with error" "test-command.rkt" 'replace-with-error '()))]
-    [_ (raise-syntax-error #f "TODO does not take any arguments" stx)]))
+  [(td)
+   (make-TODO stx )]
+   [_:id
+     (log-stx stx "ID case")
+     (make-TODO stx stx-pos)]
+   [(td . args)
+      #`(#,(make-TODO #'td (syntax-position #'td)) . args)]
+   [_ (error "Error rest")]
+   ))
 
-
+(define-syntax TODO-function
+  (make-variable-like-transformer #'(TODO-macro)))
 
 
 
@@ -2447,503 +2458,503 @@
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
                (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
-                                             define-type-alias define-syntax: define-syntax-rule:
-                                             lambda: begin: local: letrec: let: let*: TODO ;;JE
-                                             shared: parameterize:
-                                             begin: cond: case: if: when: unless:
-                                             or: and: set!: trace:
-                                             type-case: quote: quasiquote: time: listof:
-                                             else empty
-                                             has-type ....
-                                             list: vector: values: try
-                                             module+: module)
-                 [TODO (gen-tvar exp)] ;JE
-                 [(module+: name e ...)
-                  (let*-values ([(datatypes dt-len opaques o-len aliases a-len
-                                            variants v-len env e-len
-                                            prev-macros prev-tys prev-tl-tys prev-submods)
-                                 (vector->values (hash-ref submods (syntax-e #'name)
-                                                           (vector datatypes
-                                                                   (length datatypes)
-                                                                   opaques
-                                                                   (length opaques)
-                                                                   aliases
-                                                                   (length aliases)
-                                                                   variants
-                                                                   (length variants)
-                                                                   env
-                                                                   (length env)
-                                                                   null ; macros
-                                                                   null ; tys
-                                                                   null ; tl-tys
-                                                                   (hasheq))))]
-                                [(tys env datatypes opaques aliases variants macros tl-tys next-submods)
-                                 (typecheck-defns (syntax->list #'(e ...))
-                                                  datatypes
-                                                  opaques
-                                                  aliases
-                                                  env
-                                                  variants
-                                                  #f
-                                                  #f ; not top
-                                                  poly-context
-                                                  let-polys
-                                                  prev-submods
-                                                  base-tvars)])
-                    (set! submods (hash-set submods (syntax-e #'name)
-                                            (vector datatypes dt-len
-                                                    opaques o-len
-                                                    aliases a-len
-                                                    variants v-len
-                                                    env e-len
-                                                    (append macros prev-macros)
-                                                    (append tys prev-tys)
-                                                    (append tl-tys prev-tl-tys)
-                                                    next-submods))))]
-                 [(module . _)
-                  ;; can ignore
-                  (void)]
-                 [(define-syntax: . _)
-                  ;; can ignore
-                  (void)]
-                 [(define-syntax-rule: . _)
-                  ;; can ignore
-                  (void)]
-                 [(begin . _)
-                  ;; can ignore macro-introduced
-                  (void)]
-                 [(require: . _)
-                  ;; handled in require env
-                  (void)]
-                 [(define-type: id [variant (field-id : field-type) ...] ...)
-                  ;; handled in initial env
-                  (void)]
-                 [(define-type-alias (id (quote: arg) ...) t)
-                  ;; check that `t' makes sense
-                  ((parse-param-type (map (lambda (arg) (cons arg (gen-tvar arg)))
-                                          (syntax->list #'(arg ...)))
-                                     ;; Not a box => no free type variables allowed
-                                     base-tvars)
-                   #'t)
-                  (void)]
-                 [(define-type-alias id t)
-                  ;; check that `t' makes sense
-                  ((parse-param-type null base-tvars) #'t)
-                  (void)]
-                 [(id : type)
-                  (let ([id #'id])
-                    (unless (identifier? id)
-                      (raise-syntax-error 'declaration "expected an identifier before `:`" id))
-                    (unless (or top? (lookup id def-env #:default #f))
-                      (raise-syntax-error 'declaration "identifier not defined here" id))
-                    (unify! expr
-                            (poly-instance (lookup id env))
-                            (parse-type/accum #'type (box (unbox tvars-box)))))]
-                 [(id : . _)
-                  (if (identifier? #'id)
-                      (raise-syntax-error 'declaration "expected a single type after `:`" expr)
-                      (raise-syntax-error 'declaration "expected an identifier before `:`" #'id))]
-                 [(define: (id arg ...) . rest)
-                  (typecheck (with-syntax ([proc (syntax/loc expr (lambda: (arg ...) . rest))])
-                               (syntax/loc expr (define: id proc)))
-                             env
-                             tvars-box)]
-                 [(define: id : type expr)
-                  (let ([dt (lookup #'id env)])
-                    ;; Note: if we're at the top level and `dt` is a polymorphic type
-                    ;; from a previous interaction, we won't be able to redefine, because
-                    ;; `unify!` cannot unify polymorphic types
-                    (unify-defn! #'expr dt
-                                 (typecheck #'expr env (box (get-defn-tvars dt)))))]
-                 [(define: id expr)
-                  (typecheck #'(define: id : (gensym id) expr)
-                             env
-                             tvars-box)]
-                 [(define-values: (id ...) rhs)
-                  (let ([id-ids (map (lambda (id)
-                                       (if (identifier? id)
-                                           id
-                                           (car (syntax-e id))))
-                                     (syntax->list #'(id ...)))]
-                        [id-types (map (lambda (id)
-                                         (syntax-case id (:)
-                                           [(id : type)
-                                            (poly-instance (parse-type/accum #'type tvars-box))]
-                                           [else (gen-tvar id)]))
-                                       (syntax->list #'(id ...)))])
-                    (unify! expr
-                            (make-tupleof expr id-types)
-                            (typecheck #'rhs env tvars-box))
-                    (for-each (lambda (id tvar)
-                                (unify-defn! expr
-                                             (lookup id env)
-                                             tvar))
-                              id-ids
-                              id-types))]
+                                                        define-type-alias define-syntax: define-syntax-rule:
+                                                        lambda: begin: local: letrec: let: let*: TODO ;;JE
+                                                        shared: parameterize:
+                                                        begin: cond: case: if: when: unless:
+                                                        or: and: set!: trace:
+                                                        type-case: quote: quasiquote: time: listof:
+                                                        else empty
+                                                        has-type ....
+                                                        list: vector: values: try
+                                                        module+: module)
+                            [TODO (gen-tvar exp)] ;JE
+                            [(module+: name e ...)
+                             (let*-values ([(datatypes dt-len opaques o-len aliases a-len
+                                                       variants v-len env e-len
+                                                       prev-macros prev-tys prev-tl-tys prev-submods)
+                                            (vector->values (hash-ref submods (syntax-e #'name)
+                                                                      (vector datatypes
+                                                                              (length datatypes)
+                                                                              opaques
+                                                                              (length opaques)
+                                                                              aliases
+                                                                              (length aliases)
+                                                                              variants
+                                                                              (length variants)
+                                                                              env
+                                                                              (length env)
+                                                                              null ; macros
+                                                                              null ; tys
+                                                                              null ; tl-tys
+                                                                              (hasheq))))]
+                                           [(tys env datatypes opaques aliases variants macros tl-tys next-submods)
+                                            (typecheck-defns (syntax->list #'(e ...))
+                                                             datatypes
+                                                             opaques
+                                                             aliases
+                                                             env
+                                                             variants
+                                                             #f
+                                                             #f ; not top
+                                                             poly-context
+                                                             let-polys
+                                                             prev-submods
+                                                             base-tvars)])
+                               (set! submods (hash-set submods (syntax-e #'name)
+                                                       (vector datatypes dt-len
+                                                               opaques o-len
+                                                               aliases a-len
+                                                               variants v-len
+                                                               env e-len
+                                                               (append macros prev-macros)
+                                                               (append tys prev-tys)
+                                                               (append tl-tys prev-tl-tys)
+                                                               next-submods))))]
+                            [(module . _)
+                             ;; can ignore
+                             (void)]
+                            [(define-syntax: . _)
+                             ;; can ignore
+                             (void)]
+                            [(define-syntax-rule: . _)
+                             ;; can ignore
+                             (void)]
+                            [(begin . _)
+                             ;; can ignore macro-introduced
+                             (void)]
+                            [(require: . _)
+                             ;; handled in require env
+                             (void)]
+                            [(define-type: id [variant (field-id : field-type) ...] ...)
+                             ;; handled in initial env
+                             (void)]
+                            [(define-type-alias (id (quote: arg) ...) t)
+                             ;; check that `t' makes sense
+                             ((parse-param-type (map (lambda (arg) (cons arg (gen-tvar arg)))
+                                                     (syntax->list #'(arg ...)))
+                                                ;; Not a box => no free type variables allowed
+                                                base-tvars)
+                              #'t)
+                             (void)]
+                            [(define-type-alias id t)
+                             ;; check that `t' makes sense
+                             ((parse-param-type null base-tvars) #'t)
+                             (void)]
+                            [(id : type)
+                             (let ([id #'id])
+                               (unless (identifier? id)
+                                 (raise-syntax-error 'declaration "expected an identifier before `:`" id))
+                               (unless (or top? (lookup id def-env #:default #f))
+                                 (raise-syntax-error 'declaration "identifier not defined here" id))
+                               (unify! expr
+                                       (poly-instance (lookup id env))
+                                       (parse-type/accum #'type (box (unbox tvars-box)))))]
+                            [(id : . _)
+                             (if (identifier? #'id)
+                                 (raise-syntax-error 'declaration "expected a single type after `:`" expr)
+                                 (raise-syntax-error 'declaration "expected an identifier before `:`" #'id))]
+                            [(define: (id arg ...) . rest)
+                             (typecheck (with-syntax ([proc (syntax/loc expr (lambda: (arg ...) . rest))])
+                                          (syntax/loc expr (define: id proc)))
+                                        env
+                                        tvars-box)]
+                            [(define: id : type expr)
+                             (let ([dt (lookup #'id env)])
+                               ;; Note: if we're at the top level and `dt` is a polymorphic type
+                               ;; from a previous interaction, we won't be able to redefine, because
+                               ;; `unify!` cannot unify polymorphic types
+                               (unify-defn! #'expr dt
+                                            (typecheck #'expr env (box (get-defn-tvars dt)))))]
+                            [(define: id expr)
+                             (typecheck #'(define: id : (gensym id) expr)
+                                        env
+                                        tvars-box)]
+                            [(define-values: (id ...) rhs)
+                             (let ([id-ids (map (lambda (id)
+                                                  (if (identifier? id)
+                                                      id
+                                                      (car (syntax-e id))))
+                                                (syntax->list #'(id ...)))]
+                                   [id-types (map (lambda (id)
+                                                    (syntax-case id (:)
+                                                      [(id : type)
+                                                       (poly-instance (parse-type/accum #'type tvars-box))]
+                                                      [else (gen-tvar id)]))
+                                                  (syntax->list #'(id ...)))])
+                               (unify! expr
+                                       (make-tupleof expr id-types)
+                                       (typecheck #'rhs env tvars-box))
+                               (for-each (lambda (id tvar)
+                                           (unify-defn! expr
+                                                        (lookup id env)
+                                                        tvar))
+                                         id-ids
+                                         id-types))]
                 
-                 [(lambda: (arg ...) : type body)
-                  (let ([tvars-box (box (unbox tvars-box))])
-                    (let ([arg-ids (map (lambda (arg)
-                                          (if (identifier? arg)
-                                              arg
-                                              (car (syntax-e arg))))
-                                        (syntax->list #'(arg ...)))]
-                          [arg-types (map (lambda (arg)
-                                            (syntax-case arg (:)
-                                              [(id : type)
-                                               (poly-instance (parse-type/accum #'type tvars-box))]
-                                              [else (gen-tvar arg)]))
-                                          (syntax->list #'(arg ...)))]
-                          [result-type (poly-instance (parse-type/accum #'type tvars-box))])
-                      (unify! #'body
-                              (typecheck #'body (append (map cons 
-                                                             arg-ids
-                                                             arg-types)
-                                                        env)
-                                         tvars-box)
-                              result-type)
-                      (make-arrow expr arg-types result-type)))]
-                 [(lambda: (arg ...) body)
-                  (with-syntax ([expr expr])
-                    (typecheck (syntax/loc #'expr
-                                 (lambda: (arg ...) : (gensym expr) body))
-                               env
-                               tvars-box))]
-                 [(begin: e ... last-e)
-                  (begin
-                    (map (lambda (e)
-                           (typecheck e env tvars-box))
-                         (syntax->list #'(e ...)))
-                    (typecheck #'last-e env tvars-box))]
-                 [(local: [defn ...] expr)
-                  (let-values ([(ty env datatypes opaques aliases vars macros tl-tys subs)
-                                (typecheck-defns (syntax->list #'(defn ...))
-                                                 datatypes
-                                                 opaques
-                                                 aliases
-                                                 env
-                                                 variants
-                                                 #f
-                                                 #f ; not top
-                                                 poly-context
-                                                 let-polys
-                                                 submods
-                                                 (unbox tvars-box))])
-                    (typecheck #'expr env tvars-box))]
-                 [(letrec: . _)
-                  (typecheck ((make-let 'letrec) expr) env tvars-box)]
-                 [(let: . _)
-                  (typecheck ((make-let 'let) expr) env tvars-box)]
-                 [(let*: . _)
-                  (typecheck ((make-let 'let*) expr) env tvars-box)]
-                 [(shared: ([id rhs] ...) expr)
-                  (let-values ([(ty env datatypes opaques aliases vars macros tl-tys subs)
-                                (typecheck-defns (syntax->list #'((define: id rhs) ...))
-                                                 datatypes
-                                                 opaques
-                                                 aliases
-                                                 env
-                                                 variants
-                                                 #f
-                                                 #f ; not top
-                                                 poly-context
-                                                 let-polys submods
-                                                 (unbox tvars-box))])
-                    (typecheck #'expr env tvars-box))]
-                 [(parameterize: ([param rhs] ...) expr)
-                  (begin
-                    (for ([param (in-list (syntax->list #'(param ...)))]
-                          [rhs (in-list (syntax->list #'(rhs ...)))])
-                      (unify! #'param 
-                              (typecheck param env tvars-box)
-                              (make-parameterof rhs (typecheck rhs env tvars-box))))
-                    (typecheck #'expr env tvars-box))]
-                 [(cond: [ques ans] ...)
-                  (let ([res-type (gen-tvar expr)])
-                    (for-each
-                     (lambda (ques ans)
-                       (unless (syntax-case ques (else)
-                                 [else #t]
-                                 [_ #f])
-                         (unify! ques
-                                 (make-bool ques)
-                                 (typecheck ques env tvars-box)))
-                       (unify! ans
-                               res-type
-                               (typecheck ans env tvars-box)))
-                     (syntax->list #'(ques ...))
-                     (syntax->list #'(ans ...)))
-                    res-type)]
-                 [(case: expr [alts ans] ...)
-                  (let ([res-type (gen-tvar #'expr)])
-                    (unify! #'expr
-                            (let loop ([alts (syntax->list #'(alts ...))])
-                              (if (null? alts)
-                                  (make-sym #'expr)
-                                  (syntax-case (car alts) ()
-                                    [() (loop (cdr alts))]
-                                    [(v . _)
-                                     (number? (syntax-e #'v))
-                                     (make-num #'expr)]
-                                    [_ (make-sym #'expr)])))
-                            (typecheck #'expr env tvars-box))
-                    (for-each
-                     (lambda (ans)
-                       (unify! #'ans
-                               res-type
-                               (typecheck ans env tvars-box)))
-                     (syntax->list #'(ans ...)))
-                    res-type)]
-                 [(if: test then els)
-                  (begin
-                    (unify! #'test
-                            (make-bool #'test)
-                            (typecheck #'test env tvars-box))
-                    (let ([then-type (typecheck #'then env tvars-box)])
-                      (unify! #'then then-type (typecheck #'els env tvars-box))
-                      then-type))]
-                 [(when: test e ...)
-                  (begin
-                    (unify! #'test
-                            (make-bool #'test)
-                            (typecheck #'test env tvars-box))
-                    (typecheck #'(begin: e ...) env tvars-box)
-                    (make-vd expr))]
-                 [(unless: test e ...)
-                  (begin
-                    (unify! #'test
-                            (make-bool #'test)
-                            (typecheck #'test env tvars-box))
-                    (typecheck #'(begin: e ...) env tvars-box)
-                    (make-vd expr))]
-                 [(and: e ...)
-                  (let ([b (make-bool expr)])
-                    (for-each (lambda (e)
-                                (unify! e b (typecheck e env tvars-box)))
-                              (syntax->list #'(e ...)))
-                    b)]
-                 [(or: e ...)
-                  (let ([b (make-bool expr)])
-                    (for-each (lambda (e)
-                                (unify! e b (typecheck e env tvars-box)))
-                              (syntax->list #'(e ...)))
-                    b)]
-                 [(set!: id e)
-                  (let ([t (lookup #'id env)])
-                    (if (poly? t)
-                        (raise-syntax-error #f
-                                            "cannot mutate identifier with a polymorphic type"
-                                            expr
-                                            #'id)
-                        (unify-defn! #'id t (typecheck #'e env tvars-box))))
-                  (make-vd expr)]
-                 [(trace: id ...)
-                  (let ([ids (syntax->list #'(id ...))])
-                    (for-each (lambda (id)
-                                (unify! id (gen-tvar id #t) (typecheck id env tvars-box)))
-                              ids)
-                    (make-tupleof expr null))]
+                            [(lambda: (arg ...) : type body)
+                             (let ([tvars-box (box (unbox tvars-box))])
+                               (let ([arg-ids (map (lambda (arg)
+                                                     (if (identifier? arg)
+                                                         arg
+                                                         (car (syntax-e arg))))
+                                                   (syntax->list #'(arg ...)))]
+                                     [arg-types (map (lambda (arg)
+                                                       (syntax-case arg (:)
+                                                         [(id : type)
+                                                          (poly-instance (parse-type/accum #'type tvars-box))]
+                                                         [else (gen-tvar arg)]))
+                                                     (syntax->list #'(arg ...)))]
+                                     [result-type (poly-instance (parse-type/accum #'type tvars-box))])
+                                 (unify! #'body
+                                         (typecheck #'body (append (map cons 
+                                                                        arg-ids
+                                                                        arg-types)
+                                                                   env)
+                                                    tvars-box)
+                                         result-type)
+                                 (make-arrow expr arg-types result-type)))]
+                            [(lambda: (arg ...) body)
+                             (with-syntax ([expr expr])
+                               (typecheck (syntax/loc #'expr
+                                            (lambda: (arg ...) : (gensym expr) body))
+                                          env
+                                          tvars-box))]
+                            [(begin: e ... last-e)
+                             (begin
+                               (map (lambda (e)
+                                      (typecheck e env tvars-box))
+                                    (syntax->list #'(e ...)))
+                               (typecheck #'last-e env tvars-box))]
+                            [(local: [defn ...] expr)
+                             (let-values ([(ty env datatypes opaques aliases vars macros tl-tys subs)
+                                           (typecheck-defns (syntax->list #'(defn ...))
+                                                            datatypes
+                                                            opaques
+                                                            aliases
+                                                            env
+                                                            variants
+                                                            #f
+                                                            #f ; not top
+                                                            poly-context
+                                                            let-polys
+                                                            submods
+                                                            (unbox tvars-box))])
+                               (typecheck #'expr env tvars-box))]
+                            [(letrec: . _)
+                             (typecheck ((make-let 'letrec) expr) env tvars-box)]
+                            [(let: . _)
+                             (typecheck ((make-let 'let) expr) env tvars-box)]
+                            [(let*: . _)
+                             (typecheck ((make-let 'let*) expr) env tvars-box)]
+                            [(shared: ([id rhs] ...) expr)
+                             (let-values ([(ty env datatypes opaques aliases vars macros tl-tys subs)
+                                           (typecheck-defns (syntax->list #'((define: id rhs) ...))
+                                                            datatypes
+                                                            opaques
+                                                            aliases
+                                                            env
+                                                            variants
+                                                            #f
+                                                            #f ; not top
+                                                            poly-context
+                                                            let-polys submods
+                                                            (unbox tvars-box))])
+                               (typecheck #'expr env tvars-box))]
+                            [(parameterize: ([param rhs] ...) expr)
+                             (begin
+                               (for ([param (in-list (syntax->list #'(param ...)))]
+                                     [rhs (in-list (syntax->list #'(rhs ...)))])
+                                 (unify! #'param 
+                                         (typecheck param env tvars-box)
+                                         (make-parameterof rhs (typecheck rhs env tvars-box))))
+                               (typecheck #'expr env tvars-box))]
+                            [(cond: [ques ans] ...)
+                             (let ([res-type (gen-tvar expr)])
+                               (for-each
+                                (lambda (ques ans)
+                                  (unless (syntax-case ques (else)
+                                            [else #t]
+                                            [_ #f])
+                                    (unify! ques
+                                            (make-bool ques)
+                                            (typecheck ques env tvars-box)))
+                                  (unify! ans
+                                          res-type
+                                          (typecheck ans env tvars-box)))
+                                (syntax->list #'(ques ...))
+                                (syntax->list #'(ans ...)))
+                               res-type)]
+                            [(case: expr [alts ans] ...)
+                             (let ([res-type (gen-tvar #'expr)])
+                               (unify! #'expr
+                                       (let loop ([alts (syntax->list #'(alts ...))])
+                                         (if (null? alts)
+                                             (make-sym #'expr)
+                                             (syntax-case (car alts) ()
+                                               [() (loop (cdr alts))]
+                                               [(v . _)
+                                                (number? (syntax-e #'v))
+                                                (make-num #'expr)]
+                                               [_ (make-sym #'expr)])))
+                                       (typecheck #'expr env tvars-box))
+                               (for-each
+                                (lambda (ans)
+                                  (unify! #'ans
+                                          res-type
+                                          (typecheck ans env tvars-box)))
+                                (syntax->list #'(ans ...)))
+                               res-type)]
+                            [(if: test then els)
+                             (begin
+                               (unify! #'test
+                                       (make-bool #'test)
+                                       (typecheck #'test env tvars-box))
+                               (let ([then-type (typecheck #'then env tvars-box)])
+                                 (unify! #'then then-type (typecheck #'els env tvars-box))
+                                 then-type))]
+                            [(when: test e ...)
+                             (begin
+                               (unify! #'test
+                                       (make-bool #'test)
+                                       (typecheck #'test env tvars-box))
+                               (typecheck #'(begin: e ...) env tvars-box)
+                               (make-vd expr))]
+                            [(unless: test e ...)
+                             (begin
+                               (unify! #'test
+                                       (make-bool #'test)
+                                       (typecheck #'test env tvars-box))
+                               (typecheck #'(begin: e ...) env tvars-box)
+                               (make-vd expr))]
+                            [(and: e ...)
+                             (let ([b (make-bool expr)])
+                               (for-each (lambda (e)
+                                           (unify! e b (typecheck e env tvars-box)))
+                                         (syntax->list #'(e ...)))
+                               b)]
+                            [(or: e ...)
+                             (let ([b (make-bool expr)])
+                               (for-each (lambda (e)
+                                           (unify! e b (typecheck e env tvars-box)))
+                                         (syntax->list #'(e ...)))
+                               b)]
+                            [(set!: id e)
+                             (let ([t (lookup #'id env)])
+                               (if (poly? t)
+                                   (raise-syntax-error #f
+                                                       "cannot mutate identifier with a polymorphic type"
+                                                       expr
+                                                       #'id)
+                                   (unify-defn! #'id t (typecheck #'e env tvars-box))))
+                             (make-vd expr)]
+                            [(trace: id ...)
+                             (let ([ids (syntax->list #'(id ...))])
+                               (for-each (lambda (id)
+                                           (unify! id (gen-tvar id #t) (typecheck id env tvars-box)))
+                                         ids)
+                               (make-tupleof expr null))]
                  
-                 [(type-case: (listof: elem-type) val clause ...)
-                  ;; special handling for `listof` case
-                  (syntax-case expr ()
-                    [(_ type . _)
-                     (let* ([elem-type (parse-type/accum #'elem-type tvars-box)]
-                            [type (make-listof #'type elem-type)]
-                            [res-type (gen-tvar expr)])
-                       (unify! #'val type (typecheck #'val env tvars-box))
-                       (for-each (lambda (clause)
-                                   (syntax-case clause (cons:)
-                                     [[(cons: id1 id2) ans]
-                                      (unify!
-                                       expr
-                                       res-type
-                                       (typecheck #'ans 
-                                                  (cons (cons #'id1 elem-type)
-                                                        (cons (cons #'id2 type)
-                                                              env))
-                                                  tvars-box))]
-                                     [[_ ans]
-                                      (unify!
-                                       expr
-                                       res-type
-                                       (typecheck #'ans env tvars-box))]))
-                                 (syntax->list #'(clause ...)))
-                       res-type)])]
-                 [(type-case: type val [(variant id ...) ans] ...)
-                  (let ([type (parse-mono-type #'type tvars-box)]
-                        [res-type (gen-tvar expr)])
-                    (unify! #'val type (typecheck #'val env tvars-box))
-                    (for-each (lambda (var ids ans)
-                                (let ([id-lst (syntax->list ids)]
-                                      [variant-params (lookup var variants)])
-                                  (unless (= (length id-lst)
-                                             (length variant-params))
-                                    (raise-syntax-error 'type-case
-                                                        (format "variant ~a has ~a fields in the definition but ~a fields here at a use"
-                                                                (syntax-e var)
-                                                                (length variant-params)
-                                                                (length id-lst))
-                                                        var))
-                                  (unify!
-                                   expr
-                                   res-type
-                                   (typecheck ans
-                                              (append (map (lambda (id ftype)
-                                                             (cons id
-                                                                   (instantiate-constructor-at
-                                                                    ftype
-                                                                    type)))
-                                                           id-lst
-                                                           variant-params)
-                                                      env)
-                                              tvars-box))))
-                              (syntax->list #'(variant ...))
-                              (syntax->list #'((id ...) ...))
-                              (syntax->list #'(ans ...)))
-                    res-type)]
-                 [(type-case: type val [(variant id ...) ans] ... [else else-ans])
-                  (let ([t (typecheck (syntax/loc expr
-                                        (type-case: type val [(variant id ...) ans] ...))
-                                      env
-                                      tvars-box)])
-                    (unify! #'else-ans t (typecheck #'else-ans env tvars-box))
-                    t)]
-                 [(type-case: type val [(variant id ...) ans] ... [empty else-ans])
-                  (typecheck (syntax/loc expr
-                               (type-case: type val [(variant id ...) ans] ... [(empty-list) else-ans]))
-                             env
-                             tvars-box)]
-                 [(type-case: type val clause ...)
-                  ;; a type alias can expand to `Listof`, so catch that possibility here
-                  (let ([new-type (expand-alias #'type)])
-                    (cond
-                      [new-type
-                       (syntax-case expr ()
-                         [(tc . _)
-                          (with-syntax ([new-type new-type])
-                            (typecheck (syntax/loc expr
-                                         (tc new-type val clause ...))
-                                       env
-                                       tvars-box))])]
-                      [else (signal-typecase-syntax-error expr)]))]
-                 [(type-case: . rest)
-                  (signal-typecase-syntax-error expr)]
-                 [(quote: e)
-                  (let ([orig-expr expr])
-                    (let loop ([e #'e] [expr expr])
-                      (define v (syntax-e e))
-                      (cond
-                        [(symbol? v) (make-sym expr)]
-                        [(number? v) (make-num expr)]
-                        [(boolean? v) (make-bool expr)]
-                        [(string? v) (make-str expr)]
-                        [(null? v) (make-listof expr (gen-tvar expr))]
-                        [(pair? v)
-                         (define hd (make-listof expr (loop (car v) (car v))))
-                         (unify! expr hd (loop (datum->syntax e (cdr v)) expr))
-                         hd]
-                        [(vector? v)
-                         (define t (gen-tvar expr))
-                         (for ([e (in-vector v)])
-                           (unify! expr (loop e e) t))
-                         (make-vectorof expr t)]
-                        [(box? v)
-                         (make-boxof expr (loop (unbox v) (unbox v)))]
-                        [else (raise-syntax-error
-                               #f
-                               "disallowed content; not a symbol, number, boolean, string, list, vector, or box"
-                               orig-expr
-                               e)])))]
-                 [(quasiquote: e)
-                  (check-quoted #'e (lambda (stx)
-                                      (syntax-case stx (unquote unquote-splicing)
-                                        [(unquote e) (unify! #'e 
-                                                             (typecheck #'e env tvars-box)
-                                                             (make-sexp #f))]
-                                        [(unquote-splicing e) (unify! #'e 
-                                                                      (typecheck #'e env tvars-box) 
-                                                                      (make-listof #f (make-sexp #f)))])))
-                  (make-sexp expr)]
-                 [(time: expr)
-                  (typecheck #'expr env tvars-box)]
-                 [(has-type expr : type)
-                  (let ([t (typecheck #'expr env tvars-box)]
-                        [ty (parse-mono-type #'type tvars-box)])
-                    (unify! #'expr t ty)
-                    ty)]
-                 [....
-                  (gen-tvar expr)]
-                 [(try expr1 (lambda: () expr2))
-                  (let ([t (typecheck #'expr1 env tvars-box)])
-                    (unify! #'expr2 t (typecheck #'expr2 env tvars-box))
-                    t)]
-                 [(list: arg ...)
-                  (let ([t (gen-tvar expr)])
-                    (for-each (lambda (arg)
-                                (unify! arg t (typecheck arg env tvars-box)))
-                              (syntax->list #'(arg ...)))
-                    (make-listof expr t))]
-                 [list:
-                  (raise-syntax-error #f
-                                      "list constructor must be applied directly to arguments"
-                                      expr)]
-                 [(vector: arg ...)
-                  (let ([t (gen-tvar expr)])
-                    (for-each (lambda (arg)
-                                (unify! arg t (typecheck arg env tvars-box)))
-                              (syntax->list #'(arg ...)))
-                    (make-vectorof expr t))]
-                 [vector:
-                  (raise-syntax-error #f
-                                      "vector constructor must be applied directly to arguments"
-                                      expr)]
-                 [(values: arg ...)
-                  (make-tupleof expr
-                                (map (lambda (arg)
-                                       (typecheck arg env tvars-box))
-                                     (syntax->list #'(arg ...))))]
-                 [values:
-                  (raise-syntax-error #f
-                                      "tuple constructor must be applied directly to arguments"
-                                      expr)]
+                            [(type-case: (listof: elem-type) val clause ...)
+                             ;; special handling for `listof` case
+                             (syntax-case expr ()
+                               [(_ type . _)
+                                (let* ([elem-type (parse-type/accum #'elem-type tvars-box)]
+                                       [type (make-listof #'type elem-type)]
+                                       [res-type (gen-tvar expr)])
+                                  (unify! #'val type (typecheck #'val env tvars-box))
+                                  (for-each (lambda (clause)
+                                              (syntax-case clause (cons:)
+                                                [[(cons: id1 id2) ans]
+                                                 (unify!
+                                                  expr
+                                                  res-type
+                                                  (typecheck #'ans 
+                                                             (cons (cons #'id1 elem-type)
+                                                                   (cons (cons #'id2 type)
+                                                                         env))
+                                                             tvars-box))]
+                                                [[_ ans]
+                                                 (unify!
+                                                  expr
+                                                  res-type
+                                                  (typecheck #'ans env tvars-box))]))
+                                            (syntax->list #'(clause ...)))
+                                  res-type)])]
+                            [(type-case: type val [(variant id ...) ans] ...)
+                             (let ([type (parse-mono-type #'type tvars-box)]
+                                   [res-type (gen-tvar expr)])
+                               (unify! #'val type (typecheck #'val env tvars-box))
+                               (for-each (lambda (var ids ans)
+                                           (let ([id-lst (syntax->list ids)]
+                                                 [variant-params (lookup var variants)])
+                                             (unless (= (length id-lst)
+                                                        (length variant-params))
+                                               (raise-syntax-error 'type-case
+                                                                   (format "variant ~a has ~a fields in the definition but ~a fields here at a use"
+                                                                           (syntax-e var)
+                                                                           (length variant-params)
+                                                                           (length id-lst))
+                                                                   var))
+                                             (unify!
+                                              expr
+                                              res-type
+                                              (typecheck ans
+                                                         (append (map (lambda (id ftype)
+                                                                        (cons id
+                                                                              (instantiate-constructor-at
+                                                                               ftype
+                                                                               type)))
+                                                                      id-lst
+                                                                      variant-params)
+                                                                 env)
+                                                         tvars-box))))
+                                         (syntax->list #'(variant ...))
+                                         (syntax->list #'((id ...) ...))
+                                         (syntax->list #'(ans ...)))
+                               res-type)]
+                            [(type-case: type val [(variant id ...) ans] ... [else else-ans])
+                             (let ([t (typecheck (syntax/loc expr
+                                                   (type-case: type val [(variant id ...) ans] ...))
+                                                 env
+                                                 tvars-box)])
+                               (unify! #'else-ans t (typecheck #'else-ans env tvars-box))
+                               t)]
+                            [(type-case: type val [(variant id ...) ans] ... [empty else-ans])
+                             (typecheck (syntax/loc expr
+                                          (type-case: type val [(variant id ...) ans] ... [(empty-list) else-ans]))
+                                        env
+                                        tvars-box)]
+                            [(type-case: type val clause ...)
+                             ;; a type alias can expand to `Listof`, so catch that possibility here
+                             (let ([new-type (expand-alias #'type)])
+                               (cond
+                                 [new-type
+                                  (syntax-case expr ()
+                                    [(tc . _)
+                                     (with-syntax ([new-type new-type])
+                                       (typecheck (syntax/loc expr
+                                                    (tc new-type val clause ...))
+                                                  env
+                                                  tvars-box))])]
+                                 [else (signal-typecase-syntax-error expr)]))]
+                            [(type-case: . rest)
+                             (signal-typecase-syntax-error expr)]
+                            [(quote: e)
+                             (let ([orig-expr expr])
+                               (let loop ([e #'e] [expr expr])
+                                 (define v (syntax-e e))
+                                 (cond
+                                   [(symbol? v) (make-sym expr)]
+                                   [(number? v) (make-num expr)]
+                                   [(boolean? v) (make-bool expr)]
+                                   [(string? v) (make-str expr)]
+                                   [(null? v) (make-listof expr (gen-tvar expr))]
+                                   [(pair? v)
+                                    (define hd (make-listof expr (loop (car v) (car v))))
+                                    (unify! expr hd (loop (datum->syntax e (cdr v)) expr))
+                                    hd]
+                                   [(vector? v)
+                                    (define t (gen-tvar expr))
+                                    (for ([e (in-vector v)])
+                                      (unify! expr (loop e e) t))
+                                    (make-vectorof expr t)]
+                                   [(box? v)
+                                    (make-boxof expr (loop (unbox v) (unbox v)))]
+                                   [else (raise-syntax-error
+                                          #f
+                                          "disallowed content; not a symbol, number, boolean, string, list, vector, or box"
+                                          orig-expr
+                                          e)])))]
+                            [(quasiquote: e)
+                             (check-quoted #'e (lambda (stx)
+                                                 (syntax-case stx (unquote unquote-splicing)
+                                                   [(unquote e) (unify! #'e 
+                                                                        (typecheck #'e env tvars-box)
+                                                                        (make-sexp #f))]
+                                                   [(unquote-splicing e) (unify! #'e 
+                                                                                 (typecheck #'e env tvars-box) 
+                                                                                 (make-listof #f (make-sexp #f)))])))
+                             (make-sexp expr)]
+                            [(time: expr)
+                             (typecheck #'expr env tvars-box)]
+                            [(has-type expr : type)
+                             (let ([t (typecheck #'expr env tvars-box)]
+                                   [ty (parse-mono-type #'type tvars-box)])
+                               (unify! #'expr t ty)
+                               ty)]
+                            [....
+                             (gen-tvar expr)]
+                            [(try expr1 (lambda: () expr2))
+                             (let ([t (typecheck #'expr1 env tvars-box)])
+                               (unify! #'expr2 t (typecheck #'expr2 env tvars-box))
+                               t)]
+                            [(list: arg ...)
+                             (let ([t (gen-tvar expr)])
+                               (for-each (lambda (arg)
+                                           (unify! arg t (typecheck arg env tvars-box)))
+                                         (syntax->list #'(arg ...)))
+                               (make-listof expr t))]
+                            [list:
+                             (raise-syntax-error #f
+                                                 "list constructor must be applied directly to arguments"
+                                                 expr)]
+                            [(vector: arg ...)
+                             (let ([t (gen-tvar expr)])
+                               (for-each (lambda (arg)
+                                           (unify! arg t (typecheck arg env tvars-box)))
+                                         (syntax->list #'(arg ...)))
+                               (make-vectorof expr t))]
+                            [vector:
+                             (raise-syntax-error #f
+                                                 "vector constructor must be applied directly to arguments"
+                                                 expr)]
+                            [(values: arg ...)
+                             (make-tupleof expr
+                                           (map (lambda (arg)
+                                                  (typecheck arg env tvars-box))
+                                                (syntax->list #'(arg ...))))]
+                            [values:
+                             (raise-syntax-error #f
+                                                 "tuple constructor must be applied directly to arguments"
+                                                 expr)]
                  
-                 [(id . _)
-                  (and (identifier? #'id)
-                       (typed-macro? (syntax-local-value #'id (lambda () #f))))
-                  (typecheck (local-expand-typed expr) env tvars-box)]
-                 [(f arg ...)
-                  (let ([res-type (gen-tvar expr)])
-                    (unify! #'f
-                            (typecheck #'f env tvars-box)
-                            (make-arrow #'f
-                                        (map (lambda (arg)
-                                               (typecheck arg env tvars-box))
-                                             (syntax->list #'(arg ...)))
-                                        res-type)
-                            #:function-call? #t)
-                    res-type)]
-                 [_else
-                  (cond
-                    [(identifier? expr)
-                     (let ([t (lookup expr env)])
-                       (if just-id?
-                           t
-                           (at-source (poly-instance t) expr)))]
-                    [(boolean? (syntax-e expr))
-                     (make-bool expr)]
-                    [(number? (syntax-e expr))
-                     (make-num expr)]
-                    [(string? (syntax-e expr))
-                     (make-str expr)]
-                    [(char? (syntax-e expr))
-                     (make-chr expr)]
-                    [(eq? (void) (syntax-e expr))
-                     (void)]
-                    [else
-                     (raise-syntax-error #f
-                                         "don't know how to typecheck"
-                                         expr)])])])
+                            [(id . _)
+                             (and (identifier? #'id)
+                                  (typed-macro? (syntax-local-value #'id (lambda () #f))))
+                             (typecheck (local-expand-typed expr) env tvars-box)]
+                            [(f arg ...)
+                             (let ([res-type (gen-tvar expr)])
+                               (unify! #'f
+                                       (typecheck #'f env tvars-box)
+                                       (make-arrow #'f
+                                                   (map (lambda (arg)
+                                                          (typecheck arg env tvars-box))
+                                                        (syntax->list #'(arg ...)))
+                                                   res-type)
+                                       #:function-call? #t)
+                               res-type)]
+                            [_else
+                             (cond
+                               [(identifier? expr)
+                                (let ([t (lookup expr env)])
+                                  (if just-id?
+                                      t
+                                      (at-source (poly-instance t) expr)))]
+                               [(boolean? (syntax-e expr))
+                                (make-bool expr)]
+                               [(number? (syntax-e expr))
+                                (make-num expr)]
+                               [(string? (syntax-e expr))
+                                (make-str expr)]
+                               [(char? (syntax-e expr))
+                                (make-chr expr)]
+                               [(eq? (void) (syntax-e expr))
+                                (void)]
+                               [else
+                                (raise-syntax-error #f
+                                                    "don't know how to typecheck"
+                                                    expr)])])])
                  (begin
                    (hash-set! types-for-locs (syntax-position expr) (cons ret env))
                    ret))))
@@ -3568,59 +3579,59 @@
 
 (define-syntax (top-interaction stx)
   (if (not module-loaded?) (error "Syntax and/or type errors in module, REPL disabled.")
-  (begin
-    (set! lazy? orig-is-lazy?)
-  (set! untyped? orig-is-untyped?)
-  (set! fuel orig-fuel)
-  (syntax-case stx ()
-    [(_ . body)
-     untyped?
-     #'body]
-    [(_ . body)
-     (let ([expanded-body (syntax-case #'body (define-type:)
-                            [(define-type: . _)
-                             ;; Can't `local-expand' without also evaluating
-                             ;; due to introduced identifiers interleaved
-                             ;; in definitions; the only point of local expansion 
-                             ;; is to check syntax, so just call the transformer
-                             ;; directly:
-                             (begin
-                               (expand-define-type #'body)
-                               #'body)]
-                            [_
-                             (local-expand #'(drop-type-decl body) 'top-level null)])])
-       (unless tl-env
-         (set! module-level-expansions (reverse orig-module-level-expansions))
-         (let-values ([(ts e d o a vars macros tl-types subs) 
-                       (do-original-typecheck (syntax->list (if orig-body
-                                                                (syntax-local-introduce orig-body)
-                                                                #'())))])
-           (set! tl-datatypes d)
-           (set! tl-opaques o)
-           (set! tl-aliases a)
-           (set! tl-env e)
-           (set! tl-variants vars)
-           (set! tl-submods subs)))
-       (set! module-level-expansions #f)
-       (let-values ([(tys e2 d2 o2 a2 vars macros tl-types subs) 
-                     (typecheck-defns (expand-includes (list #'body))
-                                      tl-datatypes tl-opaques tl-aliases tl-env tl-variants (identifier? #'body) #t
-                                      null #f tl-submods null)])
-         (set! tl-datatypes d2)
-         (set! tl-opaques o2)
-         (set! tl-aliases a2)
-         (set! tl-env e2)
-         (set! tl-variants vars)
-         (set! tl-submods subs)
-         (with-syntax ([ty ((type->datum (make-hasheq)) (car tys))]
-                       [body (if lazy?
-                                 #`(!! #,expanded-body)
-                                 expanded-body)])
-           (if (void? (car tys))
-               #'body
-               #'(begin
-                   (print-type 'ty)
-                   body)))))]))))
+      (begin
+        (set! lazy? orig-is-lazy?)
+        (set! untyped? orig-is-untyped?)
+        (set! fuel orig-fuel)
+        (syntax-case stx ()
+          [(_ . body)
+           untyped?
+           #'body]
+          [(_ . body)
+           (let ([expanded-body (syntax-case #'body (define-type:)
+                                  [(define-type: . _)
+                                   ;; Can't `local-expand' without also evaluating
+                                   ;; due to introduced identifiers interleaved
+                                   ;; in definitions; the only point of local expansion 
+                                   ;; is to check syntax, so just call the transformer
+                                   ;; directly:
+                                   (begin
+                                     (expand-define-type #'body)
+                                     #'body)]
+                                  [_
+                                   (local-expand #'(drop-type-decl body) 'top-level null)])])
+             (unless tl-env
+               (set! module-level-expansions (reverse orig-module-level-expansions))
+               (let-values ([(ts e d o a vars macros tl-types subs) 
+                             (do-original-typecheck (syntax->list (if orig-body
+                                                                      (syntax-local-introduce orig-body)
+                                                                      #'())))])
+                 (set! tl-datatypes d)
+                 (set! tl-opaques o)
+                 (set! tl-aliases a)
+                 (set! tl-env e)
+                 (set! tl-variants vars)
+                 (set! tl-submods subs)))
+             (set! module-level-expansions #f)
+             (let-values ([(tys e2 d2 o2 a2 vars macros tl-types subs) 
+                           (typecheck-defns (expand-includes (list #'body))
+                                            tl-datatypes tl-opaques tl-aliases tl-env tl-variants (identifier? #'body) #t
+                                            null #f tl-submods null)])
+               (set! tl-datatypes d2)
+               (set! tl-opaques o2)
+               (set! tl-aliases a2)
+               (set! tl-env e2)
+               (set! tl-variants vars)
+               (set! tl-submods subs)
+               (with-syntax ([ty ((type->datum (make-hasheq)) (car tys))]
+                             [body (if lazy?
+                                       #`(!! #,expanded-body)
+                                       expanded-body)])
+                 (if (void? (car tys))
+                     #'body
+                     #'(begin
+                         (print-type 'ty)
+                         body)))))]))))
 
 (define (print-type t)
   (parameterize ([pretty-print-print-line
@@ -3675,21 +3686,20 @@
   (syntax-case stx ()
     [(_ form ...)
      (let ([ret
-       (with-syntax ([(form ...) (filter-keywords! #'(form ...))])
-         (with-syntax ([end (cond
-                              [is-submodule?
-                               #'(begin)]
-                              [untyped?
-                               #`(begin
-                                   (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
-                                   (provide #,(datum->syntax stx `(,#'all-defined-out))))]
-                              [else
-                               #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
-           #`(printing-module-begin
-              (drop-type-decl form) ...
-              end)))])
+            (with-syntax ([(form ...) (filter-keywords! #'(form ...))])
+              (with-syntax ([end (cond
+                                   [is-submodule?
+                                    #'(begin)]
+                                   [untyped?
+                                    #`(begin
+                                        (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
+                                        (provide #,(datum->syntax stx `(,#'all-defined-out))))]
+                                   [else
+                                    #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
+                #`(printing-module-begin
+                   (drop-type-decl form) ...
+                   end)))])
        (begin (set! module-loaded? #t)
-              (println "Setting module to loaded")
               ret))]))
 
 (define-syntax drop-type-decl
