@@ -1,10 +1,10 @@
 #lang setup/infotab
 
-(define collection "plattur")
+(define collection "flit")
 
-(define deps '("base"
-               "lazy"
-               "plai"))
+(define deps '("plait"
+               "base"
+               "lazy"))
 (define build-deps '("racket-doc"
                      "rackunit-lib"
                      ["scribble-lib" #:version "1.16"]))
@@ -13,4 +13,4 @@
 
 (define version "1.1")
 
-(define scribblings '(("scribblings/plattur.scrbl" (multi-page) (language))))
+(define scribblings '(("scribblings/flit.scrbl" (multi-page) (language))))

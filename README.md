@@ -1,15 +1,15 @@
-This is the "plattur" package. It it is based off of the `plait` language for Racket, and to a lesser degree `plai-typed` and `plai`. It is meant to accompany the book ["Programming Languages: Application and Interpretation"](https://www.plai.org/) by Shriram Krishnamurthi, specifically the second or third editions.
+This is the "flit" package. It it is based off of the `plait` language for Racket, and to a lesser degree `plai-typed` and `plai`. It is meant to accompany the book ["Programming Languages: Application and Interpretation"](https://www.plai.org/) by Shriram Krishnamurthi, specifically the second or third editions.
 
 ## Name 
 
-The name is an acronym for **P**rogramming **L**anguages **A**nd **T**ype **T**heory at **U**niversity of **R**egina.
+The name stands for Functional Languages, Interpreters, and Types, the name of the course notes that use this language.
 
 ## Usage
 
-To write a program in Plattur, start your Racket file with the line:
+To write a program in Flit, start your Racket file with the line:
 
 ```
- #lang plattur
+ #lang flit
 ```
 
 ## Documentation
@@ -24,12 +24,12 @@ The package is meant to be installed with the Racket package manager:
    from the "File" menu, and enter
 
 ```
-       plattur
+       flit
 ```
 
    in the dialog.
 
  * From the comamnd line:
 
-     raco pkg install plattur
+     raco pkg install flit
 

@@ -1,12 +1,14 @@
 #lang racket/base
 
-(require (only-in plai
+(require (only-in "plai-datatype.rkt"
                   define-type
                   type-case
+                  )
+         (only-in "plai-test.rkt"
                   test
                   test/exn
                   print-only-errors
-                  error)
+                  (plai-error error))
          (prefix-in lazy: lazy)
          (prefix-in lazy: "private/lazy-datatype.rkt")
          racket/pretty
@@ -601,21 +603,21 @@
                                                               `(,@xs ,name)
                                                               `(submod ,xs ,name)))
                                                          #t))
-                                     (define typed? (has-submodule? 'plattur))
+                                     (define typed? (has-submodule? 'flit))
                                      (unless typed?
                                        (when (module-declared? (absolute-module-path xs) #t)
                                          (raise-syntax-error #f
-                                                             (if (has-submodule? 'untyped-plattur)
-                                                                 "not a typed `plattur' module"
-                                                                 "not a `plattur' module")
+                                                             (if (has-submodule? 'untyped-flit)
+                                                                 "not a typed `flit' module"
+                                                                 "not a `flit' module")
                                                              stx
                                                              #'mp)))
                                      (fixup-quote
                                       (if typed?
                                           (let ([new-clause
                                                  (if (and (pair? s) (eq? (car s) 'submod))
-                                                     (quasisyntax/loc clause (#,@#'mp plattur))
-                                                     (quasisyntax/loc clause (submod mp plattur)))])
+                                                     (quasisyntax/loc clause (#,@#'mp flit))
+                                                     (quasisyntax/loc clause (submod mp flit)))])
                                             (datum->syntax clause
                                                            (syntax-e new-clause)
                                                            clause
@@ -707,7 +709,7 @@
              (module+ name
                decl ...
                ;; to register implicitly imported types:
-               (begin (require (only-in (submod ".." plattur))))
+               (begin (require (only-in (submod ".." flit))))
                e
                ...))])))]))
 
@@ -810,7 +812,7 @@
      (when (or (null? module-level-expansions)
                (not (equal? (syntax->datum (caar module-level-expansions))
                             (syntax->datum expr))))
-       (error 'plattur "unexpected expansion: ~.s" (syntax->datum expr)))
+       (error 'flit "unexpected expansion: ~.s" (syntax->datum expr)))
      (begin0
        (cdar module-level-expansions)
        (set! module-level-expansions (cdr module-level-expansions)))]
@@ -956,7 +958,7 @@
    ;; Expand a TODO to a runtime error
    (define runtime
      (syntax/loc stx
-       (error "TODO")))
+       (error "TODO encountered at run-time")))
    ;; Attach a notice that it is a TODO to be filled out
    (syntax-property
     (syntax-property
@@ -972,11 +974,11 @@
   [(td)
    (make-TODO stx )]
    [_:id
-     (log-stx stx "ID case")
+     ;(log-stx stx "ID case")
      (make-TODO stx stx-pos)]
    [(td . args)
       #`(#,(make-TODO #'td (syntax-position #'td)) . args)]
-   [_ (error "Error rest")]
+   ;[_ (error "Error rest")]
    ))
 
 (define-syntax TODO-function
@@ -1387,10 +1389,39 @@
     [else
      (raise-syntax-error #f "ill-formed type-case" stx)]))
 
+;; Type-case that checks if it's given a type or not,
+;; and infers the type if it's not given one
 (define-syntax type-case:
   (check-top
    (lambda (stx)
      (syntax-case stx (else listof:)
+       ;; Check if it's a bad type
+       [(_ thing . rest)
+        ;; (begin (displayln "Type case bad syntax")
+        ;;        ;; (displayln (plai-stx-type? #'thing)
+        ;;                   )
+        (not (or (identifier? #'thing)
+                 (syntax-case #'thing ()
+                   [(id arg ...)
+                    (identifier? #'id)]
+                   [_ #f])))
+        (raise-syntax-error
+         #f
+         "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
+         stx
+         #'thing)]
+       ;; Good syntax, where type is given
+       [(_ ty expr clause ...) #`(onelevel-type-case: ty expr clause ...)]
+       ))))
+
+(define-syntax onelevel-type-case:
+  (check-top
+   (lambda (stx)
+     (syntax-case stx (else listof:)
+;;        [(_  expr
+;;            clause ...)
+;;         (with-syntax ([(_ . rest) stx])
+;;           #'(listof-type-case . rest))]
        [(_ (listof: t) expr
            clause ...)
         (with-syntax ([(_ . rest) stx])
@@ -1414,17 +1445,7 @@
             [else (free-identifier=? id #'listof:)]))        
         (with-syntax ([(_ . rest) stx])
           #'(listof-type-case . rest))]
-       [(_ thing . rest)
-        (not (or (identifier? #'thing)
-                 (syntax-case #'thing ()
-                   [(id arg ...)
-                    (identifier? #'id)]
-                   [_ #f])))
-        (raise-syntax-error
-         #f
-         "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
-         stx
-         #'thing)]
+       ;; Type case without else
        [(_ type expr [(variant id ...) ans] ...)
         (with-syntax ([type (let loop ([type #'type])
                               (define type-id
@@ -1443,6 +1464,7 @@
                       [type-case (if lazy? #'lazy:type-case #'type-case)])
           (syntax/loc stx
             (type-case type expr clause ...)))]
+       ;; Type case with else
        [(_ type expr [(variant id ...) ans] ... [else else-ans])
         (with-syntax ([type (if (identifier? #'type)
                                 #'type
@@ -1452,6 +1474,7 @@
                       [type-case (if lazy? #'lazy:type-case #'type-case)])
           (syntax/loc stx
             (type-case type expr clause ...)))]
+       ;; Ill-formed typecase
        [_
         (signal-typecase-syntax-error stx)]))))
 
@@ -3450,7 +3473,7 @@
       ;; Export identifiers for untyped use as redirections to the
       ;; submodule:
       (module with-contracts-reference racket/base
-        (require plattur/private/contract-support)
+        (require flit/private/contract-support)
         (define-runtime-module-path-index contracts-submod
           '(submod ".." with-contracts))
         (provide contracts-submod))
@@ -3479,7 +3502,7 @@
                   #`[#,(car tl-thing)
                      #,(gensym)])
                 accessible-tl-types)))
-      (module* #,(if untyped? #'untyped-plattur #'plattur) #f
+      (module* #,(if untyped? #'untyped-flit #'flit) #f
         (begin-for-syntax
           (add-types!
            ;; datatypes:
@@ -3592,7 +3615,8 @@
 ;; ----------------------------------------
 
 (define-syntax (top-interaction stx)
-  (if (not module-loaded?) (error "Syntax and/or type errors in module, REPL disabled.")
+  ;;(if (not module-loaded?) (error "Syntax and/or type errors in module, REPL disabled.")
+  (if #f #f
       (begin
         (set! lazy? orig-is-lazy?)
         (set! untyped? orig-is-untyped?)
@@ -3733,5 +3757,4 @@
 ;; ----------------------------------------
 
 (module reader syntax/module-reader
-  plattur)
-
+  flit)
