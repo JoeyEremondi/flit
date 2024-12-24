@@ -45,11 +45,11 @@ jobs:
           sudo: never
       # Package Installation (flit-lib)
       - name: Package Installation - Local Packages
-        run: raco pkg install --scope installation flit
+        run: raco pkg install --scope installation 
       # Configure Flit
       # Test Program
       - name: Test Program
-        run: raco flit test
+        run: raco test ./tests
       # Package Installation (flit-doc)
       - name: Package Installation (flit-doc)
         run: raco pkg install --scope installation flit-doc
