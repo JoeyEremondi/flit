@@ -2,7 +2,7 @@
 
 (define collection "flit")
 
-(define deps '("plait"
+(define deps '(
                "base"
                "lazy"))
 (define build-deps '("racket-doc"

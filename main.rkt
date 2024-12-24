@@ -80,7 +80,7 @@
          (for-syntax (all-from-out racket/base))
 
          (rename-out [define-type: define-type]
-                     [onelevel-type-case: type-case])
+                     [type-case: type-case])
          define-type-alias
 
          (rename-out [test: test]
@@ -1416,19 +1416,19 @@
 ;;         ;; otherwise we'll try to infer it
 ;;         (with-handlers ([exn? (lambda (exn) #f)])
 ;;           (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
-;;         #`(onelevel-type-case: ty expr clause ...)]
+;;         #`(type-case: ty expr clause ...)]
 ;;        ;; [(_ expr clause ...)
 ;;        ;;  ;; Check that the thing we gave is actually a type
 ;;        ;;  ;; otherwise we'll try to infer it
 ;;        ;;  (begin
 ;;        ;;    (displayln types-for-locs)
 ;;        ;;    (displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr)))) #t)
-;;        ;;  #`(onelevel-type-case: ty expr clause ...)]
+;;        ;;  #`(type-case: ty expr clause ...)]
 ;;        ))
 ;;      (displayln (format "Result: ~s" result))
 ;;      result)))
 
-(define-syntax onelevel-type-case:
+(define-syntax type-case:
   (check-top
    (lambda (stx)
      (syntax-case stx (else listof:)
