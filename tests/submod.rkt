@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (module m racket/base
   (provide f)
@@ -14,20 +14,20 @@
                    [g : (Number -> Number)]))
 
 
-(module n plait
+(module n flit
   (define n : Number 8))
 (require (submod "." n))
 
-(module n2 plait
+(module n2 flit
   (define n2 : Number 7))
 (require 'n2)
 
-(module p plait
+(module p flit
   (define p1 : Number -3))
 (require (rename-in (submod "." p)
                     [p1 p]))
 
-(module p2 plait
+(module p2 flit
   (define p : Number -4))
 (require (rename-in 'p2
                     [p p2]))

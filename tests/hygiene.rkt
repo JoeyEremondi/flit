@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (define (msg o m a)
   ((o m) a))

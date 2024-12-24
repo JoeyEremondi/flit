@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 (require (rename-in "basic.rkt"
                     [seven-a Seven-A]))
 

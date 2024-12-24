@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (require (rename-in
           (typed-in racket/base

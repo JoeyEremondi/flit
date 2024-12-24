@@ -1,6 +1,6 @@
 #lang racket/base
 
-(module m1 plait
+(module m1 flit
   (define (f x) x))
 
 (module m2 racket/base
@@ -9,7 +9,7 @@
 
 ;; ----------------------------------------
 
-(module m3 plait
+(module m3 flit
   (define (id x) x))
 
 (module m4 racket

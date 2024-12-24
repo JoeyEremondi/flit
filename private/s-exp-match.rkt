@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (define (s-exp-match? pattern s)
   (local [;; main matching routine is called after checking

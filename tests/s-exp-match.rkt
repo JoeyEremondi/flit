@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (print-only-errors #t)
 (test (s-exp-match? `NUMBER `10)

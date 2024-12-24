@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 ;; from Shriram
 

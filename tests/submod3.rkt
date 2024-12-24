@@ -1,9 +1,9 @@
-#lang plait
+#lang flit
 
 ;; Check that `module+` creates a submodule that can be
 ;; imported as a typed module
 
-(module m1 plait
+(module m1 flit
   (define (f x) x)
   (module+ sub
     (define (g x) x)))

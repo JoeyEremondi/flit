@@ -1,6 +1,6 @@
 #lang racket
 (require "untyped.rkt"
-         (only-in plait s-exp-content))
+         (only-in flit s-exp-content))
 
 (define-syntax-rule (test a b)
   (unless (equal? a b)

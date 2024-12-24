@@ -1,15 +1,15 @@
 #lang scribble/manual
-@(require (for-label (only-meta-in 0 plait))
+@(require (for-label (only-meta-in 0 flit))
           racket/runtime-path
           scribble/examples
           scribble/core
           scribble/html-properties
           "link.rkt")
 
-@(define plait-eval (make-base-eval))
-@examples[#:hidden #:eval plait-eval (require plait)]
+@(define flit-eval (make-base-eval))
+@examples[#:hidden #:eval flit-eval (require flit)]
 @(define-syntax-rule (interaction e ...)
-   @examples[#:label #f #:eval plait-eval e ...])
+   @examples[#:label #f #:eval flit-eval e ...])
 
 @(define ref.scrbl '(lib "scribblings/reference/reference.scrbl"))
 
@@ -24,7 +24,9 @@
 
 The
 @hyperlink[tutorial-video-url]{Plait tutorial videos}
-provide most of the same information as this section.
+provide most of the same information as this section,
+They use Plait, the language that Flit is based off of,
+but should still be helpful.
 
 @margin-note{For a quick refresher of the tutorial content, try @|demo-link|.}
 
@@ -33,14 +35,14 @@ provide most of the same information as this section.
 @; ----------------------------------------
 @section[#:tag "getting-started"]{Getting Started}
 
-To get started with Plait,
+To get started with Flit,
 @link["https://download.racket-lang.org/"]{download Racket}, install
-it, start @onscreen{DrRacket}, and install the @tt{plait} package using DrRacket's
+it, start @onscreen{DrRacket}, and install the @tt{flit} package using DrRacket's
 @onscreen{Install Package...} menu item in the @onscreen{File} menu.
 
 Then, in the top part of the DrRacket window, type
 
-@racketmod[plait]
+@racketmod[flit]
 
 and click the @onscreen{Run} button (or use the keyboard shortcut
 shown in the @onscreen{Racket} menu). In the bottom part of the window, type
@@ -63,7 +65,7 @@ the line. For examples of other comment forms, see @|demo-link|.
 @; ----------------------------------------
 @section[#:tag "data-tutorial"]{Simple Data}
 
-Plait supports various kinds of numbers, all with type @racket[Number]:
+Flit supports various kinds of numbers, all with type @racket[Number]:
 
 @interaction[1 0.5 1/2 1+2i]
 
@@ -83,7 +85,7 @@ Strings are written the usual way with a starting and ending @litchar{"}:
 @interaction["apple" "banana cream pie"
              "yes, \"escape\" quotes with backslash"]
 
-In addition to strings, Plait includes string-like values called
+In addition to strings, Flit includes string-like values called
 @defterm{symbols}. A symbol is written with a single quote @litchar{'}
 followed by a sequence of non-whitespace characters.
 
@@ -109,7 +111,7 @@ allowed in symbols, they are frequently used that way. The @litchar{|}
 and @litchar{\} characters are allowed, but they're treated as quoting
 and escaping characters, so don't use them.
 
-Individual characters are infrequently used in Plait, but they're
+Individual characters are infrequently used in Flit, but they're
 written with @litchar{#\}:
 
 @interaction[
@@ -122,7 +124,7 @@ written with @litchar{#\}:
 @; ----------------------------------------
 @section[#:tag "built-ins-tutorial"]{Using Built-in Functions}
 
-Plait includes some of the usual functions on numbers, like
+Flit includes some of the usual functions on numbers, like
 @racket[floor] and @racket[max]. To call a function, start with an
 open parenthesis, then use the function name, then the argument, and
 finally a closing parenthesis:
@@ -135,7 +137,7 @@ finally a closing parenthesis:
 The parenthesis must be @italic{@bold{before the function}}, not
 after. Don't use commas between arguments. Also, @italic{@bold{extra
 parentheses are not allowed}}. If you include extra parentheses around
-@racket[3], for example, then Plait will complain that @racket[3] is
+@racket[3], for example, then Flit will complain that @racket[3] is
 not a function, since the parentheses mean a function call:
 
 @interaction[
@@ -152,16 +154,16 @@ The same error happens if you add parentheses around the call to
 The type of a function is written with @racket[->] in parentheses. The
 function's argument types appear before the arrow, and the function's
 result type is after the arrow. A function is a value, so if you
-evaluate just @racket[max] without calling it, then Plait will show
+evaluate just @racket[max] without calling it, then Flit will show
 the type and print that the result is a procedure (which is synonymous
-with ``function'' in Plait):
+with ``function'' in Flit):
 
 @interaction[
 max
 ]
 
 Unlike most languages, arithmetic operations such as @racket[+] and
-@racket[*] in Plait are just functions, and they are called the same
+@racket[*] in Flit are just functions, and they are called the same
 way as other functions---just after an open parenthesis, and grouped
 with their arguments by a closing parenthesis:
 
@@ -175,7 +177,7 @@ Note that @racket[+] is allowed as a function name in fundamentally
 the same way that @litchar{+} is allowed in the symbol @racket['+].
 
 If you try to put the operator-as-function in the middle of its
-arguments, Plait will complain that the first argument isn't a
+arguments, Flit will complain that the first argument isn't a
 function, because the opening parenthesis means that first thing in
 the parenthesis should be a function to call:
 
@@ -183,7 +185,7 @@ the parenthesis should be a function to call:
 (eval:alts (@#,pink[@racket[3]] + 5) (eval:error (3 + 5)))
 ]
 
-If you omit then parentheses, then Plait see three separate
+If you omit then parentheses, then Flit see three separate
 expressions:
 
 @racketblock[
@@ -200,11 +202,11 @@ The style of syntax that puts a function/operation name up front and
 grouped with its arguments in parentheses is called
 @defterm{parenthesized prefix notation}.
 
-Treating @racket[+] like any other function makes Plait simpler, as
+Treating @racket[+] like any other function makes Flit simpler, as
 does using parenthesized prefix notation. Since you didn't have to
-create Plait, you may not care that Plait is simpler this way. But if
+create Flit, you may not care that Flit is simpler this way. But if
 you're building your own interpreter in a class that's about
-programming languages, then Plait's regularity turns out to be a
+programming languages, then Flit's regularity turns out to be a
 convenient design to imitate; you can spend more time studying the
 meaning of programming constructs and less time worrying about the
 syntax of those constructs.
@@ -259,7 +261,7 @@ subexpressions with parentheses:
     'no)
 ]
 
-The line breaks above don't matter to Plait, but readers of your
+The line breaks above don't matter to Flit, but readers of your
 programs will appreciate it if you normally put the ``then'' and
 ``else'' branches on their own lines and correctly intent them. The
 correct indentation is the indentation that DrRacket gives you
@@ -297,10 +299,10 @@ produces the corresponding result. The last clause's question cal be
   [else 2])
 ]
 
-Plait doesn't distinguish between square brackets @litchar{[} and
+Flit doesn't distinguish between square brackets @litchar{[} and
 @litchar{]} and parentheses @litchar{(} and @litchar{)}, as long as
 each opener and closer match. You could use parentheses instead of
-square brackets in the above examples---but don't. Plait programmers
+square brackets in the above examples---but don't. Flit programmers
 should use square brackets in specific places by convention to make
 programs more readable. Follow the conventions that you see in this
 tutorial.
@@ -323,7 +325,7 @@ they work with any number of boolean subexpressions:
 @; ----------------------------------------
 @section[#:tag "lists-tutorial"]{Lists}
 
-Plait lists are @defterm{uniform}, meaning that all of the elements of
+Flit lists are @defterm{uniform}, meaning that all of the elements of
 a list must have the same type. The @racket[list] form creates a list:
 
 @interaction[
@@ -452,7 +454,7 @@ is removed.
 (rest (rest '("apple" "banana" "coconut")))
 ]
 
-Plait also provides @racket[second], @racket[third], @racket[fourth],
+Flit also provides @racket[second], @racket[third], @racket[fourth],
 and @racket[list-ref]. Those functions are sometimes useful to extract
 pieces of a list that has a known shape. Functions that take the
 @racket[first] of a list and recur with the @racket[rest] turn out to
@@ -528,12 +530,12 @@ is-odd?
 (is-odd? 12)
 ]
 
-In our definitions of @racket[pi] and @racket[tau], plait inferred
+In our definitions of @racket[pi] and @racket[tau], flit inferred
 that the newly defined names have type @racket[Number] and that
 @racket[is-odd?] has type @racket[(Number -> Boolean)]. Programs are
 often easier to read and understand if you write explicitly the type
 that would otherwise be inferred. Declaring types can sometimes help
-improve or localize error messages when Plait's attempt to infer a
+improve or localize error messages when Flit's attempt to infer a
 type fails, since inference can other end up depending on the whole
 program.
 
@@ -641,7 +643,7 @@ be equivalent to @racket[(Listof String)]:
 (define shopping-list : Groceries '("milk" "cookies"))
 ]
 
-Note that, by convention, all type names are capitalized. Plait is
+Note that, by convention, all type names are capitalized. Flit is
 case-sensitive.
 
 But what if the data that you need to represent is not easily encoded
@@ -735,7 +737,7 @@ on.
 
 Note that the type of @racket[(tiger-color slimey)] printed before an
 error was reported. That's because @racket[(tiger-color slimey)] is
-well-typed as far as Plait can tell, since @racket[tiger-color] wants
+well-typed as far as Flit can tell, since @racket[tiger-color] wants
 an @racket[Animal] and @racket[slimey] has type @racket[Animal]. We'll
 see that @racket[type-case] provides an alterntive to selectors like
 @racket[tiger-color] that is less dangerous than the selector.
@@ -871,7 +873,7 @@ for making sure that you've considered all cases.
 @; ----------------------------------------
 @section[#:tag "testing-tutorial"]{Testing and Debugging}
 
-Plait includes built-in support for testing your programs. The
+Flit includes built-in support for testing your programs. The
 @racket[test] form takes two expressions and makes sure that they
 produce the same value. Typically, the first expression is a function
 call, and the second expression is the expected result of the
@@ -989,7 +991,7 @@ during evaluation.
 
 After we define a function, the name of the function can be used as a
 value without calling it. If you just evaluate the function name, then
-Plait will print something like @nonbreaking{@racketresultfont{#<procedure>}}.
+Flit will print something like @nonbreaking{@racketresultfont{#<procedure>}}.
 
 @interaction[
 (define (plus-five _n)
@@ -1112,7 +1114,7 @@ that the solution is a list of @tt{Object}s, because anything can be
 coerced to and from the type @tt{Object}. That is, we would be able to
 mix a symbol as @tt{Object} with two numbers as @tt{Object}s.
 
-Plait doesn't have an @tt{Object} type, but it does have an
+Flit doesn't have an @tt{Object} type, but it does have an
 @racket[S-Exp] type, which is similar. Even better, the @racket[S-Exp]
 type works with a convenient @litchar{'}-like shortcut. The
 @racket[S-Exp] shortcut is @litchar{`} (usually pronounced
@@ -1152,7 +1154,7 @@ S-expression is list-like or number-like.
 The backquote @litchar{`} versus forward quote @litchar{'} distinction
 is subtle. A convention to help highlight the difference is to mostly
 use curly braces with @litchar{`}. Curly braces are interchangable
-with parentheses and square brackets, and Plait won't print results
+with parentheses and square brackets, and Flit won't print results
 with curly braces, but the visual cue can still help when reading
 programs.
 
@@ -1301,7 +1303,7 @@ component.
 
 Sometimes, instead of always returning multiple values, you'll want a
 function that returns either one value or no value. A tuple is no help
-for that case, but Plait predefines a helpful datatype called
+for that case, but Flit predefines a helpful datatype called
 @racket[Optionof]:
 
 @racketblock[
@@ -1329,8 +1331,8 @@ you can return any kind of value in a @racket[some].
 @section[#:tag "program-tutorial"]{Programs and Modules}
 
 When you write a program using @racket[@#,hash-lang[]
-@#,racketmodname[plait]], you are technically defining a
-@defterm{module}. A Plait module contains a mixture of expressions and
+@#,racketmodname[flit]], you are technically defining a
+@defterm{module}. A Flit module contains a mixture of expressions and
 definitions. The expressions are evaluated in order, and the value of
 each expression is printed after the expression is evaluated (unless
 the result value has type @racket[Void]). The order of function
@@ -1338,7 +1340,7 @@ definitions doesn't matter, as long as a function definition appears
 before any expression that eventually calls the function.
 
 @racketmod[
-plait
+flit
 code:blank
 (define (is-odd? _x)
   (if (zero? _x)
@@ -1363,7 +1365,7 @@ commenting out a definition of expression, even when the definition or
 expression spans multiple lines.
 
 Modules written with the @racket[module] form can be nested in other
-modules. A nested module is called a @defterm{submodule}. Plait
+modules. A nested module is called a @defterm{submodule}. Flit
 programs don't often use submodules that are written with
 @racket[module], but the @racket[module+] form is more common. A
 @racket[module+] form creates a submodule by merging all
@@ -1372,7 +1374,7 @@ programs don't often use submodules that are written with
 @racket[test] submodule.
 
 @racketmod[
-plait
+flit
 code:blank
 (define (is-odd? _x)
   (if (zero? _x)
@@ -1404,19 +1406,19 @@ submodule is that you can turn off the tests. In DrRacket's
 @onscreen{Show Details}, click @onscreen{Submodules to run}, and then
 uncheck the @onscreen{test} item.
 
-A Plait module's definitions are automatically exported from the
+A Flit module's definitions are automatically exported from the
 module. You can import the definitions of another module by using the
 @racket[require] form, typically with a string that is a relative path
 to the module to import.
 
 @racketmod[#:file "math.rkt"
-plait
+flit
 (define pi 3.14)
 (define tau (+ pi pi))
 ]
 
 @racketmod[#:file "circle.rkt"
-plait
+flit
 (require "math.rkt")
 
 (define (circle-area [r : Number]) : Number
@@ -1434,7 +1436,7 @@ the definitions.
 @; ----------------------------------------
 @section[#:tag "state-tutorial"]{State}
 
-@nested[#:style 'inset]{ @bold{Warning:} If you are using Plait with a
+@nested[#:style 'inset]{ @bold{Warning:} If you are using Flit with a
 programming-languages course, then the instructor has almost certainly
 disallowed the constructs in this chaper for use in your homework
 solutions, except as specifically allowed. Don't use @racket[set!],
@@ -1476,7 +1478,7 @@ directly pass a variable to another function that changes the
 variable's value. A @racket[set!] on a function's argument would
 change the argument variable's value, but would have no effect on the
 caller's variables. To make a mutable location that can be passed
-around, Plait supports @defterm{boxes}. You can think of a box as a
+around, Flit supports @defterm{boxes}. You can think of a box as a
 mutable object that has a single field, where @racket[box] creates a
 fresh object, @racket[unbox] extracts the object's field, and
 @racket[set-box!] changes the object's field.
@@ -1516,5 +1518,4 @@ each of the vector's slots. The @racket[vector] function creates a vector,
 
 @; ----------------------------------------
 
-@close-eval[plait-eval]
-
+@close-eval[flit-eval]

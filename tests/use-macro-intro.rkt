@@ -2,7 +2,7 @@
 
 (define ns (make-base-empty-namespace))
 (parameterize ([current-namespace ns])
-  (namespace-require 'plait))
+  (namespace-require 'flit))
 
 (eval '(require "macro-intro.rkt") ns)
 
@@ -23,7 +23,7 @@
 (define u-ns (make-base-namespace))
 (eval '(require "macro-intro.rkt") u-ns)
 
-(eval '(module use plait
+(eval '(module use flit
          (require "macro-intro.rkt")
          (values (sum 1 2) (join "a" "b")))
       u-ns)

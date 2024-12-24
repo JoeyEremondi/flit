@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (define-type-alias (F 'a 'b) ('a -> 'b))
 

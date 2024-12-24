@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 ;; The first line above is important. It tells DrRacket which
 ;;  variant of Racket you want to use.
@@ -519,4 +519,4 @@ b      ; => '#&(), but shows "(Boxof (Listof '_a))" first
 ;; More information
 
 ;; Use the "Help Desk" item in DrRacket's "Help" menu
-;; and see "Plait Language"
+;; and see "Flit Language"

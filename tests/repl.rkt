@@ -2,7 +2,7 @@
 
 (define ns (make-base-empty-namespace))
 (parameterize ([current-namespace ns])
-  (namespace-require 'plait))
+  (namespace-require 'flit))
 
 (define (tl expect expr)
   (define s

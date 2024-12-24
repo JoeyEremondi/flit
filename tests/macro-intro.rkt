@@ -1,4 +1,4 @@
-#lang plait
+#lang flit
 
 (define-syntax (define-1st-order-function stx)
   (syntax-case stx ()

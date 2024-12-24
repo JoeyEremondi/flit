@@ -1,4 +1,4 @@
-#lang plait #:lazy
+#lang flit #:lazy
 
 ;; An extra check of polymorphism, and also a check that forcing is ok
 ;; with a tuple result.

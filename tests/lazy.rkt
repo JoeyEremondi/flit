@@ -1,4 +1,4 @@
-#lang plait #:lazy
+#lang flit #:lazy
 
 (print-only-errors #t)
 

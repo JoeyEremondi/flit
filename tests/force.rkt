@@ -1,8 +1,8 @@
 #lang racket/base
-(require plait/private/force)
+(require flit/private/force)
 
 ;; Example from David Bremner:
-(module rabbit plait
+(module rabbit flit
   (define-type Hat
     [empty-hat]
     [hat (bunny : Rabbit)])
@@ -28,7 +28,7 @@
 
 ;; ----------------------------------------
 
-(module sloth plait #:lazy
+(module sloth flit #:lazy
   (define-type Sloth
     [sloth (size : Number)])
   (define speedy (sloth (+ 1 2))))
