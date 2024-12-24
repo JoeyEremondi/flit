@@ -51,19 +51,15 @@ jobs:
       - name: Test Program
         run: raco test ./tests
       # Package Installation (flit-doc)
-      - name: Package Installation (flit-doc)
-        run: raco pkg install --scope installation flit-doc
       # Setup Local Packages
-      - name: Setup Collections
-        run: raco setup -v --check-pkg-deps flit
       - name: Build documentation with raco scribble
         run: |
              cd /home/runner/work/flit/
              pwd
              ls -F -G -R *
-             xvfb-run -a raco scribble +m --redirect-main http://pkg-build.racket-lang.org/doc/ --htmls --dest ./htmls flit/flit-doc/flit/scribblings/manual-flit.scrbl
+             xvfb-run -a raco scribble --dest ./htmls scribblings/flit.scrbl
       - name: Push to Github Pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
-          folder: /home/runner/work/flit/htmls/manual-flit
+          folder: /home/runner/work/flit/htmls/
           branch: gh-pages
