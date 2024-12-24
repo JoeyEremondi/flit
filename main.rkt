@@ -80,7 +80,7 @@
          (for-syntax (all-from-out racket/base))
 
          (rename-out [define-type: define-type]
-                     [type-case: type-case])
+                     [onelevel-type-case: type-case])
          define-type-alias
 
          (rename-out [test: test]
@@ -1391,42 +1391,42 @@
     [else
      (raise-syntax-error #f "ill-formed type-case" stx)]))
 
-;; Type-case that checks if it's given a type or not,
-;; and infers the type if it's not given one
-(define-syntax type-case:
-  (check-top
-   (lambda (stx)
-     (displayln (format "type-case syntax ~s" stx))
-     (define result (syntax-case stx (else listof:)
-       ;; Check if it's a bad type
-       [(_ thing . rest)
-          (not (or (identifier? #'thing)
-                 (syntax-case #'thing ()
-                   [(id arg ...)
-                    (identifier? #'id)]
-                   [_ #f])))
-        (raise-syntax-error
-         #f
-         "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
-         stx
-         #'thing)]
-       ;; Good syntax, where type is given
-       [(_ ty expr clause ...)
-        ;; Check that the thing we gave is actually a type
-        ;; otherwise we'll try to infer it
-        (with-handlers ([exn? (lambda (exn) #f)])
-          (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t))))
-        #`(onelevel-type-case: ty expr clause ...)]
-       ;; [(_ expr clause ...)
-       ;;  ;; Check that the thing we gave is actually a type
-       ;;  ;; otherwise we'll try to infer it
-       ;;  (begin
-       ;;    (displayln types-for-locs)
-       ;;    (displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr)))) #t)
-       ;;  #`(onelevel-type-case: ty expr clause ...)]
-       ))
-     (displayln (format "Result: ~s" result))
-     result)))
+;; ;; Type-case that checks if it's given a type or not,
+;; ;; and infers the type if it's not given one
+;; (define-syntax type-case:
+;;   (check-top
+;;    (lambda (stx)
+;;      (displayln (format "type-case syntax ~s" stx))
+;;      (define result (syntax-case stx (else listof:)
+;;        ;; Check if it's a bad type
+;;        [(_ thing . rest)
+;;           (not (or (identifier? #'thing)
+;;                  (syntax-case #'thing ()
+;;                    [(id arg ...)
+;;                     (identifier? #'id)]
+;;                    [_ #f])))
+;;         (raise-syntax-error
+;;          #f
+;;          "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
+;;          stx
+;;          #'thing)]
+;;        ;; Good syntax, where type is given
+;;        [(_ ty expr clause ...)
+;;         ;; Check that the thing we gave is actually a type
+;;         ;; otherwise we'll try to infer it
+;;         (with-handlers ([exn? (lambda (exn) #f)])
+;;           (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
+;;         #`(onelevel-type-case: ty expr clause ...)]
+;;        ;; [(_ expr clause ...)
+;;        ;;  ;; Check that the thing we gave is actually a type
+;;        ;;  ;; otherwise we'll try to infer it
+;;        ;;  (begin
+;;        ;;    (displayln types-for-locs)
+;;        ;;    (displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr)))) #t)
+;;        ;;  #`(onelevel-type-case: ty expr clause ...)]
+;;        ))
+;;      (displayln (format "Result: ~s" result))
+;;      result)))
 
 (define-syntax onelevel-type-case:
   (check-top
