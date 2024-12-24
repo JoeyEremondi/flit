@@ -1918,7 +1918,7 @@
   ;; fresh box to represent that layer and mutate the box to add
   ;; variables that haven't been seen before, so they're apparently
   ;; bound at the layer represented by the box.
-  (displayln (format "Typecheck-defns ~s" (map syntax->datum tl)))
+  ;; (displayln (format "Typecheck-defns ~s" (map syntax->datum tl)))
   (let* ([poly-context (cons (gensym) poly-context)]
          [datatypes (append (filter
                              values
@@ -2507,7 +2507,7 @@
           (map
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
-               (displayln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
+               ;; (displayln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
                (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
@@ -3044,7 +3044,7 @@
 (define-for-syntax tl-submods #f)
 
 (define-for-syntax (do-original-typecheck tl)
-  (displayln (format "Do-Original-Typecheck ~s" tl))
+  ;; (displayln (format "Do-Original-Typecheck ~s" tl))
   (let ([datatypes null]
         [opaques null]
         [aliases null]
@@ -3733,7 +3733,7 @@
 (define-for-syntax module-loaded? #f)
 
 (define-syntax (module-begin stx)
-  (displayln (format "Module begin ~s" (syntax->datum stx)))
+  ;; (displayln (format "Module begin ~s" (syntax->datum stx)))
   (unless (eq? 'module-begin (syntax-local-context))
     (raise-syntax-error
      #f
@@ -3751,7 +3751,7 @@
                                         (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
                                         (provide #,(datum->syntax stx `(,#'all-defined-out))))]
                                    [else
-                                    (displayln (format "Begin module form ~s" #`(form ...)))
+                                    ;; (displayln (format "Begin module form ~s" #`(form ...)))
                                     #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
                 #`(printing-module-begin
                    (drop-type-decl form) ...
