@@ -54,9 +54,6 @@ jobs:
       # Setup Local Packages
       - name: Build documentation with raco scribble
         run: |
-             cd /home/runner/work/flit/
-             pwd
-             ls -F -G -R *
              xvfb-run -a raco scribble --dest ./htmls scribblings/flit.scrbl
       - name: Push to Github Pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
