@@ -8,6 +8,7 @@
          racket/undefined)
 
 (provide define-type type-case)
+(provide (for-syntax plai-stx-type? validate-and-remove-type-symbol))
 
 (define-for-syntax (plai-syntax-error id stx-loc format-string . args)
   (raise-syntax-error

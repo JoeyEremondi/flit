@@ -3,6 +3,8 @@
 (require (only-in "plai-datatype.rkt"
                   define-type
                   type-case
+                  plai-stx-type?
+                  validate-and-remove-type-symbol
                   )
          (only-in "plai-test.rkt"
                   test
@@ -972,7 +974,7 @@
   (define stx-pos (syntax-position stx))
   (syntax-parse stx
   [(td)
-   (make-TODO stx )]
+   (make-TODO stx stx-pos)]
    [_:id
      ;(log-stx stx "ID case")
      (make-TODO stx stx-pos)]
@@ -1394,13 +1396,11 @@
 (define-syntax type-case:
   (check-top
    (lambda (stx)
-     (syntax-case stx (else listof:)
+     (displayln (format "type-case syntax ~s" stx))
+     (define result (syntax-case stx (else listof:)
        ;; Check if it's a bad type
        [(_ thing . rest)
-        ;; (begin (displayln "Type case bad syntax")
-        ;;        ;; (displayln (plai-stx-type? #'thing)
-        ;;                   )
-        (not (or (identifier? #'thing)
+          (not (or (identifier? #'thing)
                  (syntax-case #'thing ()
                    [(id arg ...)
                     (identifier? #'id)]
@@ -1411,8 +1411,22 @@
          stx
          #'thing)]
        ;; Good syntax, where type is given
-       [(_ ty expr clause ...) #`(onelevel-type-case: ty expr clause ...)]
-       ))))
+       [(_ ty expr clause ...)
+        ;; Check that the thing we gave is actually a type
+        ;; otherwise we'll try to infer it
+        (with-handlers ([exn? (lambda (exn) #f)])
+          (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t))))
+        #`(onelevel-type-case: ty expr clause ...)]
+       ;; [(_ expr clause ...)
+       ;;  ;; Check that the thing we gave is actually a type
+       ;;  ;; otherwise we'll try to infer it
+       ;;  (begin
+       ;;    (displayln types-for-locs)
+       ;;    (displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr)))) #t)
+       ;;  #`(onelevel-type-case: ty expr clause ...)]
+       ))
+     (displayln (format "Result: ~s" result))
+     result)))
 
 (define-syntax onelevel-type-case:
   (check-top
@@ -1904,6 +1918,7 @@
   ;; fresh box to represent that layer and mutate the box to add
   ;; variables that haven't been seen before, so they're apparently
   ;; bound at the layer represented by the box.
+  (displayln (format "Typecheck-defns ~s" (map syntax->datum tl)))
   (let* ([poly-context (cons (gensym) poly-context)]
          [datatypes (append (filter
                              values
@@ -2492,6 +2507,7 @@
           (map
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
+               (displayln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
                (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
@@ -3028,6 +3044,7 @@
 (define-for-syntax tl-submods #f)
 
 (define-for-syntax (do-original-typecheck tl)
+  (displayln (format "Do-Original-Typecheck ~s" tl))
   (let ([datatypes null]
         [opaques null]
         [aliases null]
@@ -3716,6 +3733,7 @@
 (define-for-syntax module-loaded? #f)
 
 (define-syntax (module-begin stx)
+  (displayln (format "Module begin ~s" (syntax->datum stx)))
   (unless (eq? 'module-begin (syntax-local-context))
     (raise-syntax-error
      #f
@@ -3733,6 +3751,7 @@
                                         (typecheck #,lazy? #t #,fuel) ; sets untyped mode and laziness
                                         (provide #,(datum->syntax stx `(,#'all-defined-out))))]
                                    [else
+                                    (displayln (format "Begin module form ~s" #`(form ...)))
                                     #`(typecheck #,lazy? #,untyped? #,fuel form ...)])])
                 #`(printing-module-begin
                    (drop-type-decl form) ...
