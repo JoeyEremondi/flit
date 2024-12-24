@@ -45,7 +45,7 @@ jobs:
           sudo: never
       # Package Installation (flit-lib)
       - name: Package Installation - Local Packages
-        run: raco pkg install --scope installation 
+        run: raco pkg install -y --scope installation 
       # Configure Flit
       # Test Program
       - name: Test Program
