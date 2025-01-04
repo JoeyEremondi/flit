@@ -951,16 +951,19 @@
                         "\n"))
 
 (define-for-syntax (make-TODO stx pos)
+   (unless (in-hash types-for-locs pos)
+     (error (format "Couldn't find key ~s in hash ~s" pos types-for-locs)))
    (define tyEnv (hash-ref types-for-locs pos))
    (define ty (car tyEnv))
    (define env (cdr tyEnv))
    (define ty-str (pretty-type ty))
-   (define context-str (string-append (pretty-env env) "\n__________________________________________________\nTODO : " ty-str))
+   (define context-str (string-append (pretty-env env) "\n_____________________________\nTODO : " ty-str))
    (define item (todo-item context-str ty-str))
    ;; Expand a TODO to a runtime error
    (define runtime
-     (syntax/loc stx
-       (error "TODO encountered at run-time")))
+     (with-syntax ([lineNum (syntax-line stx)])
+       (syntax/loc stx
+         (error (format "TODO encountered at run-time, line ~s" lineNum)))))
    ;; Attach a notice that it is a TODO to be filled out
    (syntax-property
     (syntax-property
@@ -1393,40 +1396,44 @@
 
 ;; ;; Type-case that checks if it's given a type or not,
 ;; ;; and infers the type if it's not given one
-;; (define-syntax type-case:
-;;   (check-top
-;;    (lambda (stx)
-;;      (displayln (format "type-case syntax ~s" stx))
-;;      (define result (syntax-case stx (else listof:)
-;;        ;; Check if it's a bad type
-;;        [(_ thing . rest)
-;;           (not (or (identifier? #'thing)
-;;                  (syntax-case #'thing ()
-;;                    [(id arg ...)
-;;                     (identifier? #'id)]
-;;                    [_ #f])))
-;;         (raise-syntax-error
-;;          #f
-;;          "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
-;;          stx
-;;          #'thing)]
-;;        ;; Good syntax, where type is given
-;;        [(_ ty expr clause ...)
-;;         ;; Check that the thing we gave is actually a type
-;;         ;; otherwise we'll try to infer it
-;;         (with-handlers ([exn? (lambda (exn) #f)])
-;;           (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
-;;         #`(type-case: ty expr clause ...)]
-;;        ;; [(_ expr clause ...)
-;;        ;;  ;; Check that the thing we gave is actually a type
-;;        ;;  ;; otherwise we'll try to infer it
-;;        ;;  (begin
-;;        ;;    (displayln types-for-locs)
-;;        ;;    (displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr)))) #t)
-;;        ;;  #`(type-case: ty expr clause ...)]
-;;        ))
-;;      (displayln (format "Result: ~s" result))
-;;      result)))
+(define-syntax bad-type-case:
+  (check-top
+   (lambda (stx)
+     ;;(displayln (format "type-case syntax ~s" stx))
+     (define result (syntax-case stx (else listof:)
+       ;; Check if it's a bad type
+       [(_ thing . rest)
+          (not (or (identifier? #'thing)
+                 (syntax-case #'thing ()
+                   [(id arg ...)
+                    (identifier? #'id)]
+                   [_ #f])))
+        (raise-syntax-error
+         #f
+         "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
+         stx
+         #'thing)]
+       ;; Good syntax, where type is given
+       [(_ ty expr clause ...)
+        ;; Check that the thing we gave is actually a type
+        ;; otherwise we'll try to infer it
+        (with-handlers ([exn? (lambda (exn) #f)])
+          (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
+        #`(type-case: ty expr clause ...)]
+      ; [(_ expr clause ...)
+        
+        ;; Check that the thing we gave is actually a type
+        ;; otherwise we'll try to infer it
+        ;(begin
+          ;;(displayln (format "Expanded: ~s" (do-original-typecheck #`expr)))
+          ;; (displayln types-for-locs)
+          ;;(displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr))))
+        ;  #t)
+      ;  #`(type-case: ty expr clause ...)]
+       ))
+     ;;(displayln (format "Result: ~s" result)
+     ;;)
+     result)))
 
 (define-syntax type-case:
   (check-top
