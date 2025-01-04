@@ -55,6 +55,7 @@ jobs:
       - name: Build documentation with raco scribble
         run: |
              xvfb-run -a raco scribble --dest ./htmls scribblings/flit.scrbl
+             cp ./htmls/flit.html ./htmls/index.html
       - name: Push to Github Pages
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:

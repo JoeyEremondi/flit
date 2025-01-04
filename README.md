@@ -14,7 +14,7 @@ To write a program in Flit, start your Racket file with the line:
 
 ## Documentation
 
-TODO
+See the documentation [here](https://eremondi.com/flit/flit.html). There are also [detailed course notes on functional programming in Flit](https://eremondi.com/cs350/notes.html) (WIP).
 
 ## Installation
 
