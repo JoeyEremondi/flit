@@ -185,9 +185,11 @@
     (println (list str stx)))
   (define types-for-locs (make-hash)))
 
+;; Option is manually declared, basically "stdlib"
 (define-type Optionof
   [none]
   [some (v (lambda (x) #t))])
+
 
 ;; Lazy options don't interoperate at all with eager ones
 (lazy:define-type lazy-Optionof
