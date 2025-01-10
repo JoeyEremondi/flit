@@ -1504,6 +1504,7 @@
     (syntax-case clause (else empty cons:)
       [[else . _] 'else]
       [[empty . _] 'empty]
+      [[(empty) . _] 'empty]
       [[(cons: id1 id2) . _]
        (let ([check-id (lambda (id)
                          (unless (identifier? id)
