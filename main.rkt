@@ -1514,10 +1514,10 @@
 
 (define-syntax (listof-type-case stx)
   (define (clause-kind clause)
-    (syntax-case clause (else empty cons:)
+    (syntax-case clause (else empty: cons:)
       [[else . _] 'else]
-      [[empty . _] 'empty]
-      [[(empty) . _] 'empty]
+      [[empty: . _] 'empty:]
+      [[(empty:) . _] 'empty:]
       [[(cons: id1 id2) . _]
        (let ([check-id (lambda (id)
                          (unless (identifier? id)
@@ -1562,15 +1562,16 @@
        (cond
          [(or (equal? '(else) done)
               (equal? '(else cons) done)
-              (equal? '(else empty) done)
-              (equal? '(cons empty) done)
-              (equal? '(empty cons) done))
+              (equal? '(else empty:) done)
+              (equal? '(cons empty:) done)
+              (equal? '(empty: cons) done))
           #`(let ([v expr])
               (#,(if lazy? #'lazy:cond #'cond)
                #,@(for/list ([clause (in-list clauses)])
-                    (syntax-case clause (else empty cons:)
+                    (syntax-case clause (else empty: cons:)
                       [[else ans] clause]
-                      [[empty ans] #'[(#%app: empty? v) ans]]
+                      [[empty: ans] #'[(#%app: empty? v) ans]]
+                      [[(empty:) ans] #'[(#%app: empty? v) ans]]
                       [[(cons: id1 id2) ans]
                        #'[(#%app: pair? v) (let ([id1 (first: v)]
                                                  [id2 (rest: v)])
@@ -1578,7 +1579,7 @@
          [else
           (raise-syntax-error #f
                               (format "missing `~a` clause"
-                                      (if (memq 'empty done) 'cons 'empty))
+                                      (if (memq 'empty: done) 'cons 'empty:))
                               stx)]))]))
 
 (define-syntax cond:
