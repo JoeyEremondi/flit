@@ -88,6 +88,7 @@
          print-only-errors
 
          (rename-out [cons: cons]
+                     [empty: empty]
                      [list: list]
                      [first: first]
                      [second: second]
@@ -104,7 +105,7 @@
                      [foldl: foldl]
                      [foldr: foldr]
                      [filter: filter])
-         empty empty? cons?
+         empty? cons?
          build-list
 
          + - = > < <= >= / * min max 
@@ -1498,6 +1499,18 @@
        ;; Ill-formed typecase
        [_
         (signal-typecase-syntax-error stx)]))))
+
+
+(define-syntax (empty: stx)
+  (define stx-pos (syntax-position stx))
+  (syntax-parse stx
+  [(_)
+   #'(list ) ]
+   [_:id
+     ;(log-stx stx "ID case")
+     #'(list ) ]
+   [_ (error "Type Error: empty takes no arguments")]
+   ))
 
 (define-syntax (listof-type-case stx)
   (define (clause-kind clause)
@@ -2948,6 +2961,10 @@
                              (let ([t (typecheck #'expr1 env tvars-box)])
                                (unify! #'expr2 t (typecheck #'expr2 env tvars-box))
                                t)]
+
+                            [(empty:)
+                             (let ([t (gen-tvar expr)])
+                               (make-listof expr t))]
                             [(list: arg ...)
                              (let ([t (gen-tvar expr)])
                                (for-each (lambda (arg)
@@ -3239,7 +3256,7 @@
                                                                            b))
                                                                     a))
                                                              a))))
-                     (cons #'empty (POLY a (make-listof #f a)))
+                     (cons #'empty: (POLY a (make-listof #f a)))
                      (cons #'cons: (POLY a (make-arrow #f
                                                        (list a (make-listof #f a))
                                                        (make-listof #f a))))

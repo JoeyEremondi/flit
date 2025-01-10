@@ -14,6 +14,8 @@
   TODO)
 
 
+empty
+
 #| (define (map (f : ('a -> 'b)) (lst : (Listof 'a))) : (Listof 'b)
      TODO)
 
