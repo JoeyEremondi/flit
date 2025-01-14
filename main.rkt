@@ -30,6 +30,7 @@
                      racket/list
                      racket/string
                      racket/syntax
+                     racket/format
                      syntax/parse
                      syntax/transformer
                      racket/pretty
@@ -46,7 +47,7 @@
                      [lambda: λ]
                      [begin: begin]
                      [local: local]
-                     [letrec: letrec] [let: let] [let*: let*]
+                     [letrec: letrec] [let*: let] [let*: let*]
                      [shared: shared]
                      [parameterize: parameterize]
                      [cond: cond]
@@ -176,14 +177,18 @@
                      [none?: none?]
                      [some?: some?]))
 
+
+(pretty-print-depth #f)
 (begin-for-syntax
+  (pretty-print-depth #f)
   (define untyped? #f)
   (define lazy? #f)
   (define fuel 100)
   (define saw-submodules (make-hasheq))
   (define (log-stx stx [str "In macro:"])
     (println (list str stx)))
-  (define types-for-locs (make-hash)))
+  (define types-for-locs (make-hash))
+  (define mutable-ignored-vars '()))
 
 ;; Option is manually declared, basically "stdlib"
 (define-type Optionof
@@ -197,6 +202,7 @@
                   [lazy-some (v (lambda (x) #t))])
 
 (define not-there (gensym))
+
 
 (define (hash: l)
   (apply hash
@@ -947,16 +953,20 @@
 
 (define-for-syntax (pretty-env env)
   (string-join
-                        (map
+                        (filter-map
                          (lambda (env-entry)
-                           (format "~a : ~a" (syntax->datum (car env-entry)) (pretty-type (cdr env-entry))))
+                           (and
+                            (debugln "CHECKING : ~s, compare to ~s" (syntax->datum (car env-entry)) mutable-ignored-vars)
+                            (not (member (car env-entry) mutable-ignored-vars free-identifier=?))
+                            (format "~a : ~a" (syntax->datum (car env-entry)) (pretty-type (cdr env-entry)))))
                          env)
                         "\n"))
 
 (define-for-syntax (make-TODO stx pos)
-   (unless (in-hash types-for-locs pos)
-     (error (format "Couldn't find key ~s in hash ~s" pos types-for-locs)))
-   (define tyEnv (hash-ref types-for-locs pos))
+   ;; (debugln "Checking for pos ~s in hash ~s\nin? ~s" pos types-for-locs (in-hash types-for-locs pos))
+   (unless (hash-has-key? types-for-locs pos)
+     (raise-syntax-error #f (format "No type info for expression at at position ~s\n Possible cause: expression where type was expected?" pos ) stx))
+   (define tyEnv (hash-ref types-for-locs pos ))
    (define ty (car tyEnv))
    (define env (cdr tyEnv))
    (define ty-str (pretty-type ty))
@@ -1262,23 +1272,30 @@
                                                          id)))
           (case kind
             [(letrec) (syntax/loc stx (local: [(define: id rhs) ...] body))]
-            [(let) (with-syntax ([(tmp ...) (generate-temporaries ids)])
-                     (syntax/loc stx
+            [(let) (let* ([temps (generate-temporaries ids)]
+                         ;; Record the variables to ignore
+                         [_ (set! mutable-ignored-vars (append temps mutable-ignored-vars))])
+                    (with-syntax ([(tmp ...) temps])
+                     (begin
+                       ;; Add the temps to variables not to print in TODOs
+                      (syntax/loc stx
                        (local: [(define: tmp rhs) ...]
                                (local: [(define: id tmp) ...]
-                                       body))))]
+                                       body))))))]
             [(let*) (let loop ([ids ids]
                                [rhss (syntax->list #'(rhs ...))])
                       (cond
                         [(empty? ids) #'body]
-                        [else (with-syntax ([body (loop (cdr ids) (cdr rhss))]
+                        [else (let* ([temps (generate-temporaries (list (car ids)))]
+                                     [_ (set! mutable-ignored-vars (append temps mutable-ignored-vars))])
+                                (with-syntax ([body (loop (cdr ids) (cdr rhss))]
                                             [id (car ids)]
                                             [rhs (car rhss)]
-                                            [tmp (car (generate-temporaries (list (car ids))))])
+                                            [tmp (car temps)])
                                 (syntax/loc stx
                                   (local: [(define: tmp rhs)]
                                           (local: [(define: id tmp)]
-                                                  body))))]))]))]))))
+                                                  body)))))]))]))]))))
 
 (define-syntax letrec: (make-let 'letrec))
 (define-syntax let: (make-let 'let))
@@ -2519,6 +2536,7 @@
                           [(lookup (car p) init-env #:default #f)
                            => (lambda (t)
                                 (unify-defn! (car p) (cdr p) (poly-instance t))
+                                (debugln "Adding 2 to env ~s   and ~s" (car p) t)
                                 (cons (cons (car p) t) def-env))]
                           [else (cons p def-env)])))]
          [env (append def-env
@@ -2532,7 +2550,7 @@
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
                ;; (displayln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
-               (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values: 
+               (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values:
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
                                                         shared: parameterize:
@@ -2721,7 +2739,9 @@
                             [(let: . _)
                              (typecheck ((make-let 'let) expr) env tvars-box)]
                             [(let*: . _)
-                             (typecheck ((make-let 'let*) expr) env tvars-box)]
+                             (let* ([made-let ((make-let 'let*) expr)]
+                                    [_ (debugln "made-let: ~s" made-let)])
+                               (typecheck made-let env tvars-box))]
                             [(shared: ([id rhs] ...) expr)
                              (let-values ([(ty env datatypes opaques aliases vars macros tl-tys subs)
                                            (typecheck-defns (syntax->list #'((define: id rhs) ...))
@@ -3016,10 +3036,13 @@
                             [_else
                              (cond
                                [(identifier? expr)
-                                (let ([t (lookup expr env)])
-                                  (if just-id?
+                                (let* ([t (lookup expr env)]
+                                      [ret (if just-id?
                                       t
-                                      (at-source (poly-instance t) expr)))]
+                                      (at-source (poly-instance t) expr))])
+                                  (begin
+                                    (debugln "Getting type for identifier ~s ~n ~s\ninst: ~s" expr (~a t #:max-width +inf.0)  ret)
+                                    ret))]
                                [(boolean? (syntax-e expr))
                                 (make-bool expr)]
                                [(number? (syntax-e expr))
@@ -3036,15 +3059,19 @@
                                                     expr)])])])
                  (begin
                      (define num-locals (- (length env) (length start-env)))
-                      (define local-env (take env num-locals))
+                      (define local-env
+                                (take env num-locals))
+                      (debugln "Recording type ~s for pos ~s\n     locals ~s ~n IGNORED: ~s" ret (syntax-position expr) local-env mutable-ignored-vars)
                      (hash-set! types-for-locs (syntax-position expr) (cons ret local-env))
                           ret))))
            tl)])
     (set-box! let-polys (cons def-env (unbox let-polys)))
     (define poly-env
-      (if orig-let-polys
+      (begin
+        (debugln "POLY ENV")
+        (if orig-let-polys
           def-env
-          (let-based-poly! (apply append (unbox let-polys)) fuel)))
+          (let-based-poly! (apply append (unbox let-polys)) fuel))))
     (define poly-def-env
       (if (eq? poly-env def-env)
           def-env

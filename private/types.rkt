@@ -16,7 +16,16 @@
          unify! unify-defn!
          let-based-poly!
          lookup
-         type->datum)
+         type->datum
+         debugln)
+
+
+(define-syntax-rule (debugln str . args)
+  ;;(displayln (format str . args ))
+  void
+  )
+
+(pretty-print-depth #f)
 
 (define-struct type ([src #:mutable]))
 
@@ -249,6 +258,10 @@
    [(poly? t) ((type->datum tmap) ((instance (poly-tvar t)
                                              (gen-tvar 'poly))
                                    (poly-type t)))]
+   [(defn? t)
+    (begin
+      (debugln "DEFN: ~s ~n ~s ~n ~s ~n ~s ~n ~s ~n ~s ~n ~s ~nINST: ~s ~n RESOLVE: ~s" (defn-base t) (defn-rhs t) (defn-poly-context t) (defn-insts t) (defn-proto-rhs t) (defn-base-tvars t) (defn-tvars t) (poly-instance t) (simplify!* (defn-proto-rhs t)) )
+      ((type->datum tmap) (simplify!* (defn-proto-rhs t))))]
    [(non-poly-defn? t) ((type->datum tmap) (non-poly-defn-base t))]
    [else (format "?~s" t)]))
 
@@ -691,14 +704,17 @@
    [else t]))
 
 (define (resolve-defn-types env)
+  (debugln "ENV resolve-defn-types: ~s" env)
   (map (lambda (p)
          (let ([id (car p)]
                [t (cdr p)])
-           (and (defn? t)
+           (and (debugln "resolve-defn-types DEFN: ~s" t) (defn? t)
                 (or (defn-rhs t)
                     (let* ([b (simplify!* (defn-proto-rhs t))]
-                           [poly (poly-ize b (defn-poly-context t) (defn-base-tvars t))])
+                           [poly (poly-ize b (defn-poly-context t) (defn-base-tvars t))]
+                           [_ (debugln "rdt B: ~s ~n rdt poly: ~s" b poly)])
                       (for-each (lambda (x)
+                                  (debugln "Unifying ~s ~s ~s" (car x) (cdr x) (poly-instance poly))
                                   (unify! (car x) (cdr x) (poly-instance poly)))
                                 (defn-insts t))
                       poly)))))

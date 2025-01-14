@@ -15,6 +15,26 @@
 
 
 empty
+(empty)
+
+(define (e? l)
+  (type-case (Listof 'a) l
+    [(empty) #t]
+    [(cons h t) #f]))
+
+  (define (concat [xs : (Listof 'elem)]
+                  [ys : (Listof 'elem)])
+          : (Listof 'elem)
+    (type-case (Listof 'elem) xs
+      [(empty)
+         ys]
+      [(cons h t)
+         TODO]))
+
+(define (testfun [x : String])
+  (let* ([somevar 3])
+    TODO))
+
 
 #| (define (map (f : ('a -> 'b)) (lst : (Listof 'a))) : (Listof 'b)
      TODO)
