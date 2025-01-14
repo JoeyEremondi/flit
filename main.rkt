@@ -2549,7 +2549,7 @@
           (map
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
-               ;; (displayln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
+               (debugln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
                (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values:
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
@@ -2557,7 +2557,7 @@
                                                         begin: cond: case: if: when: unless:
                                                         or: and: set!: trace:
                                                         type-case: quote: quasiquote: time: listof:
-                                                        else empty
+                                                        else empty empty:
                                                         has-type ....
                                                         list: vector: values: try
                                                         module+: module)
@@ -3023,7 +3023,9 @@
                                   (typed-macro? (syntax-local-value #'id (lambda () #f))))
                              (typecheck (local-expand-typed expr) env tvars-box)]
                             [(f arg ...)
-                             (let ([res-type (gen-tvar expr)])
+                             (debugln "APP")
+                             (let* ([res-type (gen-tvar expr)]
+                                    [_ (debugln "Checking application ~s to ~s" #'f #'(arg ...))])
                                (unify! #'f
                                        (typecheck #'f env tvars-box)
                                        (make-arrow #'f
