@@ -623,7 +623,7 @@
           (if (eq? default 'fail)
               (raise-syntax-error 
                #f
-               "free variable while typechecking"
+               "undefined variable while typechecking"
                id)
               default))]
      [(free-identifier=? id (caar env))

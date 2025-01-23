@@ -86,6 +86,7 @@
 
          (rename-out [test: test]
                      [test/exn: test/exn])
+         test/noerror
          print-only-errors
 
          (rename-out [cons: cons]
@@ -693,6 +694,11 @@
        [(_ e ...) (if lazy?
                       (syntax/loc stx (test/exn (!! e) ...))
                       (syntax/loc stx (test/exn e ...)))]))))
+
+;; Shorthand for making sure a term runs without error
+;; without caring what it returns
+(define-syntax-rule (test/noerror t)
+  (test t t))
 
 (define-syntax (module+: stx)
   (define (module-begin-there s)
@@ -3269,6 +3275,10 @@
                                                      B)))
                      (cons #'test: (POLY a (make-arrow #f 
                                                        (list a a)
+                                                       (make-vd #f))))
+
+                     (cons #'test/noerror  (POLY a (make-arrow #f
+                                                       (list a)
                                                        (make-vd #f))))
                      (cons #'test/exn: (POLY a (make-arrow #f 
                                                            (list a
