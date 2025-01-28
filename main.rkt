@@ -150,6 +150,8 @@
          (rename-out [values: values]
                      [pair: pair])
          fst snd
+         (rename-out [fst pairFst]
+                     [snd pairSnd])
 
          (rename-out [identity: identity])
 
