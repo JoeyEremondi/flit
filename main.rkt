@@ -972,14 +972,20 @@
 
 (define-for-syntax (make-TODO stx pos)
    ;; (debugln "Checking for pos ~s in hash ~s\nin? ~s" pos types-for-locs (in-hash types-for-locs pos))
-   (unless (hash-has-key? types-for-locs pos)
-     (raise-syntax-error #f (format "No type info for expression at at position ~s\n Possible cause: expression where type was expected?" pos ) stx))
-   (define tyEnv (hash-ref types-for-locs pos ))
-   (define ty (car tyEnv))
-   (define env (cdr tyEnv))
-   (define ty-str (pretty-type ty))
-   (define context-str (string-append (pretty-env env) "\n_____________________________\nTODO : " ty-str))
-   (define item (todo-item context-str ty-str))
+   ;; (unless
+   ;;   (raise-syntax-error #f (format "No type info for expression at at position ~s\n Possible cause: expression where type was expected?" pos ) stx))
+   (define item
+     (if (hash-has-key? types-for-locs pos)
+         (let* (
+            (tyEnv (hash-ref types-for-locs pos ))
+            (ty (car tyEnv))
+            (env (cdr tyEnv))
+            (ty-str (pretty-type ty))
+            (context-str (string-append (pretty-env env) "\n_____________________________\nTODO : " ty-str)))
+           (todo-item context-str ty-str))
+     ;; Don't try to make a TODO item if we can't find the type
+     ;; probably means there was a type error somewhere
+     (todo-item "Error while typechecking" "Error while typechecking")))
    ;; Expand a TODO to a runtime error
    (define runtime
      (with-syntax ([lineNum (syntax-line stx)])
