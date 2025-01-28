@@ -698,7 +698,7 @@
 ;; Shorthand for making sure a term runs without error
 ;; without caring what it returns
 (define-syntax-rule (test/noerror t)
-  (test t t))
+  (test (let ([_ t]) #t) #t))
 
 (define-syntax (module+: stx)
   (define (module-begin-there s)
