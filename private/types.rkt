@@ -17,12 +17,13 @@
          let-based-poly!
          lookup
          type->datum
+         pretty-type
          debugln)
 
 
 (define-syntax-rule (debugln str . args)
   ;; (displayln (format str . args ))
-  void
+  (void)
   )
 
 (pretty-print-depth #f)
@@ -60,7 +61,7 @@
 ;; polymorphism of `f` to propagate to uses of `g` without losing the connection
 ;; between `x` and `y` in the earlier example.
 ;;
-(define-struct (tvar type) ([rep #:mutable] [non-poly #:mutable]) #:transparent)
+(define-struct (tvar type) ([rep #:mutable] [non-poly #:mutable] [rigid? #:mutable]) #:transparent)
 
 (define-struct (arrow-tvar tvar) ()) ; must unify with arrow, which helps improve error messages
 (define-struct (bool type) ())
@@ -202,8 +203,9 @@
                                (format "got confused, trying to trun into an expression ~s" type) 
                                (type-src type))])))
 
-(define (gen-tvar src [arrow? #f])
-  ((if arrow? make-arrow-tvar make-tvar) src #f #f))
+(define (gen-tvar src [arrow? #f] [rigid? #f])
+      (debugln "Making type variable ~s   rigid? ~s" src rigid?)
+      ((if arrow? make-arrow-tvar make-tvar) src #f #f rigid?))
 
 (define ((type->datum tmap) t)
   (cond
@@ -552,6 +554,9 @@
                      (extract-srcs! i ht))
                    r)]))
 
+(define (pretty-type x)
+  (pretty-format ((type->datum (make-hash)) x)))
+
 (define (raise-typecheck-error main-expr a b
                                [reason #f]
                                #:function-call? [function-call? #f])
@@ -830,6 +835,7 @@
 
 (define (unify! expr a b
                 #:function-call? [function-call? #f])
+  (debugln "Unifying ~s   and    ~s   for   ~s" (pretty-type a) (pretty-type b) expr)
   (define (sub-unify! a b expr aa ba)
     (add-srcs! aa a)
     (add-srcs! ba b)
@@ -843,27 +849,46 @@
          [(eq? a b) (void)]
          [(tvar? a)
           (when (occurs? a b)
-            (raise-typecheck-error expr a b "cycle in type constraints"))
+            (raise-typecheck-error expr a b "cycle in type constraints\n Possible cause is using (Listof T) as T, or using (Optionof T) as T, etc."))
+          ;; If a is rigid and the equality check failed, then this must be a typecheck error
+          ;; Same check if b is rigid, then equality check failed and the unification should fail
           (if (tvar? b)
-              (if (arrow-tvar? b)
-                  (begin
+            (cond
+                ;; If they're different rigid vars, then we can't unify them
+              [(and (tvar-rigid? a ) (tvar-rigid? b))
+                 (raise-typecheck-error expr a b (format "Different type variables must be treated as non-equal." ))]
+              ;; If b is rigid, and a is not, then reverse the order so the rigid one is first
+              ;; This makes sure we don't ever erase a rigid var by unifying it with a normal var
+              [(tvar-rigid? b)
+               (unify! expr b a)]
+              ;; If b is not rigid, but has been unified with something rigid,
+              ;; then unify that rigid thing with a
+              [(tvar-rigid? (clone b))
+               (unify! expr (clone b) a)]
+              [(arrow-tvar? b)
+               (begin
                     (when (tvar-non-poly a)
                       (non-poly! b (tvar-non-poly a)))
                     (set-tvar-rep! a b)
-                    (add-srcs! b a))
-                  (begin
+                    (add-srcs! b a))]
+              [else
+               (begin
                     (when (tvar-non-poly b)
                       (non-poly! a (tvar-non-poly b)))
                     (set-tvar-rep! b a)
-                    (add-srcs! a b)))
-              (if (and (arrow-tvar? a)
+                    (add-srcs! a b))])
+              ;; If b is not a tvar, and a is rigid, then we fail
+              (begin
+              (when (tvar-rigid? a )
+                (raise-typecheck-error expr a b (format "Values with variables in their types must be used in a generic way." )))
+                (if (and (arrow-tvar? a)
                        (not (arrow? b)))
                   (raise-typecheck-error expr a b "tracing requires a procedure")
                   (let ([b (clone b)])
                     (when (tvar-non-poly a)
                       (non-poly! b (tvar-non-poly a)))
                     (set-tvar-rep! a b)
-                    (add-srcs! b a))))]
+                    (add-srcs! b a)))))]
          [(and function-call? (poly-arrow? b) (not (poly-arrow? a)))
           (unify! expr b a #:function-call? #t)]
          [(bool? a)

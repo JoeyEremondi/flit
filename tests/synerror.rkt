@@ -163,7 +163,7 @@
 
 (syn-test
  '(module m flit
-    (empty))
+    ((none)))
  #rx"call of a non-function")
 
 (syn-test
@@ -287,4 +287,4 @@
               (define x 10)
               (define y "apple")]
         (+ x (string-length y)))))
- #rx"typecheck failed: Number vs[.] String")
+ #rx"generic")

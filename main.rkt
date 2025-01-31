@@ -961,57 +961,57 @@
 
 (define-for-syntax (pretty-env env)
   (string-join
-                        (filter-map
-                         (lambda (env-entry)
-                           (and
-                            (debugln "CHECKING : ~s, compare to ~s" (syntax->datum (car env-entry)) mutable-ignored-vars)
-                            (not (member (car env-entry) mutable-ignored-vars free-identifier=?))
-                            (format "~a : ~a" (syntax->datum (car env-entry)) (pretty-type (cdr env-entry)))))
-                         env)
-                        "\n"))
+   (filter-map
+    (lambda (env-entry)
+      (and
+       (debugln "CHECKING : ~s, compare to ~s" (syntax->datum (car env-entry)) mutable-ignored-vars)
+       (not (member (car env-entry) mutable-ignored-vars free-identifier=?))
+       (format "~a : ~a" (syntax->datum (car env-entry)) (pretty-type (cdr env-entry)))))
+    env)
+   "\n"))
 
 (define-for-syntax (make-TODO stx pos)
-   ;; (debugln "Checking for pos ~s in hash ~s\nin? ~s" pos types-for-locs (in-hash types-for-locs pos))
-   ;; (unless
-   ;;   (raise-syntax-error #f (format "No type info for expression at at position ~s\n Possible cause: expression where type was expected?" pos ) stx))
-   (define item
-     (if (hash-has-key? types-for-locs pos)
-         (let* (
-            (tyEnv (hash-ref types-for-locs pos ))
-            (ty (car tyEnv))
-            (env (cdr tyEnv))
-            (ty-str (pretty-type ty))
-            (context-str (string-append (pretty-env env) "\n_____________________________\nTODO : " ty-str)))
-           (todo-item context-str ty-str))
-     ;; Don't try to make a TODO item if we can't find the type
-     ;; probably means there was a type error somewhere
-     (todo-item "Error while typechecking" "Error while typechecking")))
-   ;; Expand a TODO to a runtime error
-   (define runtime
-     (with-syntax ([lineNum (syntax-line stx)])
-       (syntax/loc stx
-         (error (format "TODO encountered at run-time, line ~s" lineNum)))))
-   ;; Attach a notice that it is a TODO to be filled out
+  ;; (debugln "Checking for pos ~s in hash ~s\nin? ~s" pos types-for-locs (in-hash types-for-locs pos))
+  ;; (unless
+  ;;   (raise-syntax-error #f (format "No type info for expression at at position ~s\n Possible cause: expression where type was expected?" pos ) stx))
+  (define item
+    (if (hash-has-key? types-for-locs pos)
+        (let* (
+               (tyEnv (hash-ref types-for-locs pos ))
+               (ty (car tyEnv))
+               (env (cdr tyEnv))
+               (ty-str (pretty-type ty))
+               (context-str (string-append (pretty-env env) "\n_____________________________\nTODO : " ty-str)))
+          (todo-item context-str ty-str))
+        ;; Don't try to make a TODO item if we can't find the type
+        ;; probably means there was a type error somewhere
+        (todo-item "Error while typechecking" "Error while typechecking")))
+  ;; Expand a TODO to a runtime error
+  (define runtime
+    (with-syntax ([lineNum (syntax-line stx)])
+      (syntax/loc stx
+        (error (format "TODO encountered at run-time, line ~s" lineNum)))))
+  ;; Attach a notice that it is a TODO to be filled out
+  (syntax-property
    (syntax-property
-    (syntax-property
-     runtime
-     'todo item)
-    'editing-command (command "Replace with error" "test-command.rkt" 'replace-with-error '())))
+    runtime
+    'todo item)
+   'editing-command (command "Replace with error" "test-command.rkt" 'replace-with-error '())))
 
 ;; The simplest way to attach TODOs is to attach a string to the 'todo syntax
 ;; property.
 (define-syntax (TODO stx)
   (define stx-pos (syntax-position stx))
   (syntax-parse stx
-  [(td)
-   (make-TODO stx stx-pos)]
-   [_:id
+    [(td)
+     (make-TODO stx stx-pos)]
+    [_:id
      ;(log-stx stx "ID case")
      (make-TODO stx stx-pos)]
-   [(td . args)
-      #`(#,(make-TODO #'td (syntax-position #'td)) . args)]
-   ;[_ (error "Error rest")]
-   ))
+    [(td . args)
+     #`(#,(make-TODO #'td (syntax-position #'td)) . args)]
+    ;[_ (error "Error rest")]
+    ))
 
 (define-syntax TODO-function
   (make-variable-like-transformer #'(TODO-macro)))
@@ -1218,7 +1218,7 @@
         (begin
           (map (lambda (id)
                  (unless (identifier? id)
-                   (raise-syntax-error #f "expected an identifier" stx id)))
+                   (raise-syntax-error #f "expected an identifier (e.g. a type variable)" stx id)))
                (syntax->list #'(id arg ...)))
           (check-defn-keyword #'id stx)
           #`(define-syntax id (type-alias (list (quote-syntax arg) ...) (quote-syntax t))))]
@@ -1287,15 +1287,15 @@
           (case kind
             [(letrec) (syntax/loc stx (local: [(define: id rhs) ...] body))]
             [(let) (let* ([temps (generate-temporaries ids)]
-                         ;; Record the variables to ignore
-                         [_ (set! mutable-ignored-vars (append temps mutable-ignored-vars))])
-                    (with-syntax ([(tmp ...) temps])
-                     (begin
-                       ;; Add the temps to variables not to print in TODOs
-                      (syntax/loc stx
-                       (local: [(define: tmp rhs) ...]
-                               (local: [(define: id tmp) ...]
-                                       body))))))]
+                          ;; Record the variables to ignore
+                          [_ (set! mutable-ignored-vars (append temps mutable-ignored-vars))])
+                     (with-syntax ([(tmp ...) temps])
+                       (begin
+                         ;; Add the temps to variables not to print in TODOs
+                         (syntax/loc stx
+                           (local: [(define: tmp rhs) ...]
+                                   (local: [(define: id tmp) ...]
+                                           body))))))]
             [(let*) (let loop ([ids ids]
                                [rhss (syntax->list #'(rhs ...))])
                       (cond
@@ -1303,13 +1303,13 @@
                         [else (let* ([temps (generate-temporaries (list (car ids)))]
                                      [_ (set! mutable-ignored-vars (append temps mutable-ignored-vars))])
                                 (with-syntax ([body (loop (cdr ids) (cdr rhss))]
-                                            [id (car ids)]
-                                            [rhs (car rhss)]
-                                            [tmp (car temps)])
-                                (syntax/loc stx
-                                  (local: [(define: tmp rhs)]
-                                          (local: [(define: id tmp)]
-                                                  body)))))]))]))]))))
+                                              [id (car ids)]
+                                              [rhs (car rhss)]
+                                              [tmp (car temps)])
+                                  (syntax/loc stx
+                                    (local: [(define: tmp rhs)]
+                                            (local: [(define: id tmp)]
+                                                    body)))))]))]))]))))
 
 (define-syntax letrec: (make-let 'letrec))
 (define-syntax let: (make-let 'let))
@@ -1435,36 +1435,36 @@
    (lambda (stx)
      ;;(displayln (format "type-case syntax ~s" stx))
      (define result (syntax-case stx (else listof:)
-       ;; Check if it's a bad type
-       [(_ thing . rest)
-          (not (or (identifier? #'thing)
-                 (syntax-case #'thing ()
-                   [(id arg ...)
-                    (identifier? #'id)]
-                   [_ #f])))
-        (raise-syntax-error
-         #f
-         "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
-         stx
-         #'thing)]
-       ;; Good syntax, where type is given
-       [(_ ty expr clause ...)
-        ;; Check that the thing we gave is actually a type
-        ;; otherwise we'll try to infer it
-        (with-handlers ([exn? (lambda (exn) #f)])
-          (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
-        #`(type-case: ty expr clause ...)]
-      ; [(_ expr clause ...)
+                      ;; Check if it's a bad type
+                      [(_ thing . rest)
+                       (not (or (identifier? #'thing)
+                                (syntax-case #'thing ()
+                                  [(id arg ...)
+                                   (identifier? #'id)]
+                                  [_ #f])))
+                       (raise-syntax-error
+                        #f
+                        "expected an <id> for a type name or `(<id> <type> ...)' for polymorphic type"
+                        stx
+                        #'thing)]
+                      ;; Good syntax, where type is given
+                      [(_ ty expr clause ...)
+                       ;; Check that the thing we gave is actually a type
+                       ;; otherwise we'll try to infer it
+                       (with-handlers ([exn? (lambda (exn) #f)])
+                         (or (and (list? #'ty) (eq? (car #'ty 'Listof))) (plai-stx-type? (syntax-local-value/record #'ty (lambda (x) #t)))))
+                       #`(type-case: ty expr clause ...)]
+                      ; [(_ expr clause ...)
         
-        ;; Check that the thing we gave is actually a type
-        ;; otherwise we'll try to infer it
-        ;(begin
-          ;;(displayln (format "Expanded: ~s" (do-original-typecheck #`expr)))
-          ;; (displayln types-for-locs)
-          ;;(displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr))))
-        ;  #t)
-      ;  #`(type-case: ty expr clause ...)]
-       ))
+                      ;; Check that the thing we gave is actually a type
+                      ;; otherwise we'll try to infer it
+                      ;(begin
+                      ;;(displayln (format "Expanded: ~s" (do-original-typecheck #`expr)))
+                      ;; (displayln types-for-locs)
+                      ;;(displayln (format "Scrutinee type ~s" (hash-ref types-for-locs (syntax-position #'expr))))
+                      ;  #t)
+                      ;  #`(type-case: ty expr clause ...)]
+                      ))
      ;;(displayln (format "Result: ~s" result)
      ;;)
      result)))
@@ -1473,10 +1473,10 @@
   (check-top
    (lambda (stx)
      (syntax-case stx (else listof:)
-;;        [(_  expr
-;;            clause ...)
-;;         (with-syntax ([(_ . rest) stx])
-;;           #'(listof-type-case . rest))]
+       ;;        [(_  expr
+       ;;            clause ...)
+       ;;         (with-syntax ([(_ . rest) stx])
+       ;;           #'(listof-type-case . rest))]
        [(_ (listof: t) expr
            clause ...)
         (with-syntax ([(_ . rest) stx])
@@ -1537,13 +1537,13 @@
 (define-syntax (empty: stx)
   (define stx-pos (syntax-position stx))
   (syntax-parse stx
-  [(_)
-   #'(list ) ]
-   [_:id
+    [(_)
+     #'(list ) ]
+    [_:id
      ;(log-stx stx "ID case")
      #'(list ) ]
-   [_ (error "Type Error: empty takes no arguments")]
-   ))
+    [_ (error "Type Error: empty takes no arguments")]
+    ))
 
 (define-syntax (listof-type-case stx)
   (define (clause-kind clause)
@@ -1612,7 +1612,7 @@
          [else
           (raise-syntax-error #f
                               (format "missing `~a` clause"
-                                      (if (memq 'empty: done) 'cons 'empty:))
+                                      (if (memq 'empty: done) 'cons 'empty))
                               stx)]))]))
 
 (define-syntax cond:
@@ -2088,13 +2088,15 @@
                              (car tvars)
                              (loop (cdr tvars) ty)))))]
          [parse-type/tenv/accum
-          (lambda (t tenv tvars/box)
+          (lambda (t tenv tvars/box [rigid? #t])
             (letrec ([parse-one
                       (lambda (seen tenv t)
                         (let loop ([t t])
                           (syntax-case t (number boolean symbol string: char s-expression
                                                  gensym listof: boxof: hashof: parameterof: void: -> 
                                                  vectorof: quote: * Optionof)
+                            ;; If we see a type here, then we must be parsing a type the user wrote down
+                            ;; So we treat it as rigid until we instantiate the polymorphic function
                             [(quote: id)
                              (identifier? #'id)
                              (let ([a (ormap (lambda (p)
@@ -2107,7 +2109,9 @@
                                (cond
                                  [a (cdr a)]
                                  [(box? tvars/box)
-                                  (let ([t (gen-tvar #'id)])
+                                  ;; Give true as the rigid flag
+                                  (let ([t (gen-tvar #'id #f rigid?)]
+                                        [_ (debugln "Making rigid tvar ~s" #'id)])
                                     (set-box! tvars/box (cons (cons #'id t) (unbox tvars/box)))
                                     t)]
                                  [else
@@ -2234,10 +2238,11 @@
             (make-polymorphic-wrt t ty (map cdr (unbox tvars-box))))]
          [parse-type (lambda (type)
                        (parse-type/tenv type null))]
-         [parse-type/accum (lambda (type tvars-box)
-                             (parse-type/tenv/accum type null tvars-box))]
-         [parse-mono-type (lambda (type tvars-box)
-                            (parse-type/tenv/accum type null tvars-box))]
+         [parse-type/accum (lambda (type tvars-box [rigid? #t])
+                             (parse-type/tenv/accum type null tvars-box rigid?))]
+         ;; No rigid variables in mono type
+         [parse-mono-type (lambda (type tvars-box [rigid? #t])
+                            (parse-type/tenv/accum type null tvars-box rigid?))]
          [parse-param-type (lambda (tenv tvars/box)
                              (lambda (type)
                                (parse-type/tenv/accum type tenv tvars/box)))]
@@ -2250,7 +2255,8 @@
                          ;; Usually handled by `parse-type` above, but we need a direct expansion
                          ;; to handle `listof:` in `type-case`. Loop to make sure we discover a
                          ;; cyclic alias.
-                         (let loop ([t t] [seen '()])
+                         (let* ([ret
+                                (let loop ([t t] [seen '()])
                            (syntax-case t ()
                              [(id arg-type ...)
                               (let ([arg-types (syntax->list #'(arg-type ...))])
@@ -2269,7 +2275,7 @@
                                                        [arg-type (in-list arg-types)])
                                                 (and (free-identifier=? rhs formal)
                                                      arg-type))
-                                              (raise-syntax-error 'type "unbound type variable" rhs))]
+                                              (raise-syntax-error 'type "undefined type variable" rhs))]
                                          [_ rhs])))
                                    (or (loop new-type seen)
                                        new-type))))]
@@ -2279,7 +2285,9 @@
                                t seen
                                (lambda (rhs seen)
                                  (or (loop rhs seen)
-                                     rhs)))])))]
+                                     rhs)))]))]
+                               [_ (debugln "XXX Expand alias ret ~s" ret)])
+                           ret))]
          [macros (apply append
                         (map 
                          (lambda (stx)
@@ -2868,7 +2876,8 @@
                              ;; special handling for `listof` case
                              (syntax-case expr ()
                                [(_ type . _)
-                                (let* ([elem-type (parse-type/accum #'elem-type tvars-box)]
+                                ;; Don't do rigid here, since this is just to help plai stuff
+                                (let* ([elem-type (parse-type/accum #'elem-type tvars-box #f)]
                                        [type (make-listof #'type elem-type)]
                                        [res-type (gen-tvar expr)])
                                   (unify! #'val type (typecheck #'val env tvars-box))
@@ -2891,7 +2900,8 @@
                                             (syntax->list #'(clause ...)))
                                   res-type)])]
                             [(type-case: type val [(variant id ...) ans] ...)
-                             (let ([type (parse-mono-type #'type tvars-box)]
+                             ;; Don't do rigid here, since this is redundant with inference
+                             (let ([type (parse-mono-type #'type tvars-box #f)]
                                    [res-type (gen-tvar expr)])
                                (unify! #'val type (typecheck #'val env tvars-box))
                                (for-each (lambda (var ids ans)
@@ -2936,7 +2946,8 @@
                                         tvars-box)]
                             [(type-case: type val clause ...)
                              ;; a type alias can expand to `Listof`, so catch that possibility here
-                             (let ([new-type (expand-alias #'type)])
+                             (let* ([new-type (expand-alias #'type)]
+                                    [_ (debugln "XXX Expanded ~s  into ~s" #'type new-type)])
                                (cond
                                  [new-type
                                   (syntax-case expr ()
@@ -3053,9 +3064,9 @@
                              (cond
                                [(identifier? expr)
                                 (let* ([t (lookup expr env)]
-                                      [ret (if just-id?
-                                      t
-                                      (at-source (poly-instance t) expr))])
+                                       [ret (if just-id?
+                                                t
+                                                (at-source (poly-instance t) expr))])
                                   (begin
                                     (debugln "Getting type for identifier ~s ~n ~s\ninst: ~s" expr (~a t #:max-width +inf.0)  ret)
                                     ret))]
@@ -3074,20 +3085,20 @@
                                                     "don't know how to typecheck"
                                                     expr)])])])
                  (begin
-                     (define num-locals (- (length env) (length start-env)))
-                      (define local-env
-                                (take env num-locals))
-                      (debugln "Recording type ~s for pos ~s\n     locals ~s ~n IGNORED: ~s" ret (syntax-position expr) local-env mutable-ignored-vars)
-                     (hash-set! types-for-locs (syntax-position expr) (cons ret local-env))
-                          ret))))
+                   (define num-locals (- (length env) (length start-env)))
+                   (define local-env
+                     (take env num-locals))
+                   (debugln "XX: Recording type ~s for pos ~s\n     locals ~s ~n IGNORED: ~s" (pretty-type ret) (syntax-position expr) local-env mutable-ignored-vars)
+                   (hash-set! types-for-locs (syntax-position expr) (cons ret local-env))
+                   ret))))
            tl)])
     (set-box! let-polys (cons def-env (unbox let-polys)))
     (define poly-env
       (begin
         (debugln "POLY ENV")
         (if orig-let-polys
-          def-env
-          (let-based-poly! (apply append (unbox let-polys)) fuel))))
+            def-env
+            (let-based-poly! (apply append (unbox let-polys)) fuel))))
     (define poly-def-env
       (if (eq? poly-env def-env)
           def-env
@@ -3286,8 +3297,8 @@
                                                        (make-vd #f))))
 
                      (cons #'test/noerror  (POLY a (make-arrow #f
-                                                       (list a)
-                                                       (make-vd #f))))
+                                                               (list a)
+                                                               (make-vd #f))))
                      (cons #'test/exn: (POLY a (make-arrow #f 
                                                            (list a
                                                                  STR)

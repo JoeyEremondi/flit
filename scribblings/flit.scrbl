@@ -1758,18 +1758,6 @@ cannot have both @racket[Number] and @racket[String] type:
    (local [(define one : 'a 1)
            (define two : 'a "two")]
      #f)))
-]
-
-Beware that the order of expressions can affect the scope of type
-variables within the expressions:
-
-@examples[#:eval demo #:label #f
-(values
-  (has-type 1 : 'a)
-  (letrec ([f (lambda ([x : 'a]) x)]) f))
-(values
-  (letrec ([f (lambda ([x : 'a]) x)]) f)
-  (has-type 1 : 'a))
 ]}
   
 

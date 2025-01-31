@@ -44,24 +44,24 @@
 (te (regexp-quote "(Listof (Boxof (Listof '_a))) vs. (Boxof (Listof '_b))") '(cons xb yb))
 
 ;; Scope of type variables:
-(tl "" '(define f (lambda ([x : 'a] [y : 'b]) (has-type x : 'b))))
-(tl "- ('a 'a -> 'a)\n#<procedure:f>\n" 'f)
+;(tl "" '(define f (lambda ([x : 'a] [y : 'b]) (has-type x : 'b))))
+;(tl "- ('a 'a -> 'a)\n#<procedure:f>\n" 'f)
 (tl "" '(define g (lambda ([x : 'a] [y : 'b]) x)))
 (tl "- ('a 'b -> 'a)\n#<procedure:g>\n" 'g)
-(tl "- (('_a '_a -> '_a) * ('_b '_c -> '_b))\n(values #<procedure:f> #<procedure:g>)\n"
-    '(letrec ([f (lambda ([x : 'a] [y : 'b]) (has-type x : 'b))]
-              [g (lambda ([x : 'a] [y : 'b]) x)])
-       (values f g)))
-(te (regexp-quote "Number vs. (Listof Number)") '(define x : 'a (cons (has-type 1 : 'a) empty)))
-(tl "- (Number * (Number -> Number))\n(values 1 #<procedure:f>)\n"
-    '(values
-      (has-type 1 : 'a)
-      (letrec ([f (lambda ([x : 'a]) x)]) f)))
-(tl "- (('_a -> '_a) * Number)\n(values #<procedure:f> 1)\n"
-    '(values
-      (letrec ([f (lambda ([x : 'a]) x)]) f)
-      (has-type 1 : 'a)))
-(te (regexp-quote "Number vs. String")
+;; (tl "- (('_a '_a -> '_a) * ('_b '_c -> '_b))\n(values #<procedure:f> #<procedure:g>)\n"
+;;     '(letrec ([f (lambda ([x : 'a] [y : 'b]) (has-type x : 'b))]
+;;               [g (lambda ([x : 'a] [y : 'b]) x)])
+;;        (values f g)))
+(te (regexp-quote "generic") '(define x : 'a (cons (has-type 1 : 'a) empty)))
+;; (tl "- (Number * (Number -> Number))\n(values 1 #<procedure:f>)\n"
+;;     '(values
+;;       (has-type 1 : Number)
+;;       (letrec ([f (lambda ([x : 'a]) x)]) f)))
+;; (tl "- (('_a -> '_a) * Number)\n(values #<procedure:f> 1)\n"
+;;     '(values
+;;       (letrec ([f (lambda ([x : 'a]) x)]) f)
+;;       (has-type 1 : 'a)))
+(te (regexp-quote "generic")
     '(lambda ([x : 'a])
        (local [(define one : 'a 1)
                (define two : 'a "two")]

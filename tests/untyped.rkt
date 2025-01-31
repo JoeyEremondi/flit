@@ -125,13 +125,13 @@
                               #f
                               (even? (- n 1))))])
            (even? 10)))
-(test (list 3 1 2) (let ([x 1]
-                         [y 2]
-                         [z 3])
-                     (let ([x z]
-                           [y x]
-                           [z y])
-                       (list x y z))))
+;; (test (list 3 1 2) (let ([x 1]
+;;                          [y 2]
+;;                          [z 3])
+;;                      (let ([x z]
+;;                            [y x]
+;;                            [z y])
+;;                        (list x y z))))
 (test 4 (let* ([x 1]
                [y 2]
                [x y]

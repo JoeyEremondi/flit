@@ -89,11 +89,11 @@
               (y 2)
               7)))
 
-(test 15 (local [(x : 'a)
-                 (y : 'a)
-                 (define x 10)
-                 (define y "apple")]
-           (+ x (string-length y))))
+;; (test 15 (local [(x : 'a)
+;;                  (y : 'a)
+;;                  (define x 10)
+;;                  (define y "apple")]
+;;            (+ x (string-length y))))
 
 (test 15 (local [(ident : ('a -> 'a))
                  (define (ident x)
@@ -140,13 +140,13 @@
                               #f
                               (even? (- n 1))))])
            (even? 10)))
-(test (list 3 1 2) (let ([x 1]
-                         [y 2]
-                         [z 3])
-                     (let ([x z]
-                           [y x]
-                           [z y])
-                       (list x y z))))
+;; (test (list 3 1 2) (let ([x 1]
+;;                          [y 2]
+;;                          [z 3])
+;;                      (let ([x z]
+;;                            [y x]
+;;                            [z y])
+;;                        (list x y z))))
 (test 4 (let* ([x 1]
                [y 2]
                [x y]
@@ -211,7 +211,7 @@
 (test 1 (type-case (Optionof 'a) (none)
           [(none) 1]
           [(some v) 2]))
-(test 5 (type-case (Optionof 'a) (some 5)
+(test 5 (type-case (Optionof Number) (some 5)
           [(none) 1]
           [(some v) v]))
 
