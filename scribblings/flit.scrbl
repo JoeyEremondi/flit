@@ -580,15 +580,8 @@ Evaluates the @racket[expr]s in sequence, producing the result of the last @rack
 @defform[(unless test-expr expr ...+)]
 )]{
 
-Conditionally evaluates @racket[expr]s for their side effects, always
-returning @racket[(void)]. A @racket[when] form evaluates its
-@racket[expr]s only @racket[test-expr] produces true, while an
-@racket[unless] form evaluates its @racket[expr]s only
-@racket[test-expr] produces false.
 
-@examples[#:eval demo
-(when (< 1 2) (display "yes"))
-(unless (< 1 2) (display "no"))
+
 ]}
 
 
@@ -615,11 +608,7 @@ visible only to later @racket[rhs-expr]s as well as in the body
 @racket[expr].
 
 @examples[#:eval demo
-(local [(add-x : (Number -> Number))
-        (x : Number)
-        (define (add-x y) (+ x y))
-        (define x 2)]
-  (add-x 3))
+
 (eval:error add-x)
 (letrec ([add-x (lambda (y) (+ x y))]
          [x 2])
@@ -638,53 +627,11 @@ visible only to later @racket[rhs-expr]s as well as in the body
    (add-x 3)))]}
 
 
-@defform[(shared ([id expr] ...) expr)]{
-
-Creates cyclic data for a restricted set of restricted @racket[expr]
-patterns. See @racket-shared from @racketmodname[racket/shared] for a
-description of allowed patterns, besides the additional restriction
-that the form must be typed.
-
-@examples[#:eval demo
-(shared ([infinite-ones (cons 1 infinite-ones)])
-  (list-ref infinite-ones 1001))
-]}
 
 
-@defform[(parameterize ([param-expr val-expr] ...) expr)]{
-
-The @racket[parameterize] form implements a kind of dynamic binding.
-Each @racket[param-expr] must have type @racket[(Parameterof _type)]
-where the corresponding @racket[val-expr] has type @racket[_type], and
-the parameter produces by @racket[param-expr] is set to
-@racket[val-expr] for the dynamic extent of @racket[expr].
-
-@examples[#:eval demo
-(define current-mode (make-parameter 'straight))
-(define (display-line)
-  (display (case (parameter-ref current-mode)
-            [(straight) "---"]
-            [(curvy) "~~~"])))
-(parameterize ([current-mode 'curvy])
-  (display-line))
-(display-line)
-(define f
-  (parameterize ([current-mode 'curvy])
-    (lambda () (display-line))))
-(f)
-]}            
+    
 
 
-@defform[(set! id expr)]{
-
-@tutorial["state-tutorial"]
-
-Mutates @racket[id] to have the value of @racket[expr].
-
-@examples[#:eval demo
-(define x 1)
-(set! x (+ 1 1))
-x]}
 
 
 @deftogether[(
@@ -722,17 +669,7 @@ Builds a list. All @racket[elem]s must have the same type.
 ]}
 
 
-@defform[(vector elem ...)]{
 
-@tutorial["state-tutorial"]
-
-Builds a vector. All @racket[elem]s must have the same type.
-
-@examples[#:eval demo
-(vector 1 2 3)
-(vector "a" "b")
-(vector (list 1 2) empty (list 3 4))
-]}
 
 
 @defform[(values elem ...)]{
@@ -813,18 +750,6 @@ appear with @racket[else].
 (length '(a b))
 ]}
 
-@defform[#:literals (lambda)
-         (try expr (lambda () handle-expr))]{
-
-Either returns @racket[expr]'s result or catches an exception raised
-by @racket[expr] and calls @racket[handle-expr].
-
-@examples[#:eval demo
-(try 1 (lambda () 2))
-(try (/ 1 0) (lambda () 2))
-(try (begin (error 'demo "oops") 1) (lambda () 2))
-(eval:error (try (begin (error 'demo "oops") 1) (lambda () (/ 2 0))))
-]}
 
 
 @deftogether[(
@@ -1357,65 +1282,7 @@ Any other symbol in a @tech{pattern} matches only itself in the
 (s-exp-match? `((a ...) b ...) `((a a a) b c b b))
 ]}
 
-@; - - - - - - - - - - - - - - - - - - - - -
-@subsection{Vector}
 
-@tutorial["state-tutorial"]
-
-@deftogether[(
-@defthing[make-vector (Number 'a -> (Vectorof 'a))]
-@defthing[vector-ref ((Vectorof 'a) Number -> 'a)]
-@defthing[vector-set! ((Vectorof 'a) Number 'a -> Void)]
-@defthing[vector-length ((Vectorof 'a) -> Number)]
-)]{
-
-A @deftech{vector} is similar to a list, but it supports constant-time access to
-any item in the vector and does not support constant-time extension.
-In addition, vectors are mutable.
-
-The @racket[make-vector] function creates a vector of a given size and
-initializes all vector items to a given value. The @racket[vector-ref]
-function accesses the value in a vector slot, and @racket[vector-set!]
-changes the value in a slot. The @racket[vector-length] function
-reports the number of slots in the vector.
-
-@examples[#:eval demo
-(define vec (make-vector 10 "apple"))
-(vector-length vec)
-(vector-ref vec 5)
-(vector-set! vec 5 "banana")
-(vector-ref vec 5)
-(vector-ref vec 6)
-]}
-
-@; - - - - - - - - - - - - - - - - - - - - -
-@subsection{Boxes}
-
-@tutorial["state-tutorial"]
-
-@deftogether[(
-@defthing[box ('a -> (Boxof 'a))]
-@defthing[unbox ((Boxof 'a) -> 'a)]
-@defthing[set-box! ((Boxof 'a) 'a -> Void)]
-)]{
-
-A @deftech{box} is like a vector with a single slot. Boxes are used primarily to
-allow mutation. For example, the value of a field in a variant
-instance cannot be modified, but the field's value can be a box, and
-then the box's content can be modified.
-
-The @racket[box] function creates a box with an initial value for its
-slot, @racket[unbox] accesses the current value in a box's slot, and
-@racket[set-box!] changes the value.
-
-@examples[#:eval demo
-(define bx (box "apple"))
-(define bx2 bx)
-(unbox bx)
-(set-box! bx "banana")
-(unbox bx)
-(unbox bx2)
-]}
 
 @; - - - - - - - - - - - - - - - - - - - - -
 @subsection{Tuples}
@@ -1459,104 +1326,7 @@ Defined as
   (some [v : 'a]))
 ]}
 
-@; - - - - - - - - - - - - - - - - - - - - -
-@subsection{Hash Tables}
 
-@deftogether[(
-@defthing[make-hash ((Listof ('a * 'b)) -> (Hashof 'a 'b))]
-@defthing[hash ((Listof ('a * 'b)) -> (Hashof 'a 'b))]
-@defthing[hash-ref ((Hashof 'a 'b) 'a -> (Optionof 'b))]
-)]{
-
-The @racket[make-hash] function creates a mutable hash table that is
-initialized with a given mapping of keys to values (as a list of
-tuples pairing keys to values). The @racket[hash] function similarly
-creates an immutable hash table that supports constant-time functional
-update.
-
-The @racket[hash-ref] function works on either kind of hash table to
-find the value for a given key. If the hash table contains a mapping
-for a given key, @racket[hash-ref] returns the key's value wrapped
-with @racket[some]. Otherwise, @racket[hash-ref] returns
-@racket[(none)].
-
-@examples[#:eval demo
-(define m-ht (make-hash (list (pair 1 "apple") (pair 2 "banana"))))
-(define i-ht (hash (list (pair 1 "apple") (pair 2 "banana"))))
-(hash-ref m-ht 1)
-(hash-ref i-ht 1)
-(hash-ref m-ht 3)
-]}
-
-@deftogether[(
-@defthing[hash-set! ((Hashof 'a 'b) 'a 'b -> Void)]
-@defthing[hash-remove! ((Hashof 'a 'b) 'a -> Void)]
-)]{
-
-Changes the mapping of a mutable hash table. The @racket[hash-set!]
-operation adds or changes the value for a given key, while
-@racket[hash-remove!] deletes the mapping (if any) of a given key.
-
-Providing an immutable hash table triggers an exception.
-
-@examples[#:eval demo
-(define m-ht (make-hash (list (pair 1 "apple") (pair 2 "banana"))))
-(hash-ref m-ht 1)
-(hash-ref m-ht 3)
-(hash-set! m-ht 3 "coconut")
-(hash-set! m-ht 1 "Apple")
-(hash-ref m-ht 1)
-(hash-ref m-ht 3)
-]}
-
-@deftogether[(
-@defthing[hash-set ((Hashof 'a 'b) 'a 'b -> (Hashof 'a 'b))]
-@defthing[hash-remove ((Hashof 'a 'b) 'a -> (Hashof 'a 'b))]
-)]{
-
-Produces an immutable hash table that is like a given one, but with a
-mapping changed, added, or removed. The @racket[hash-set] operation
-adds or changes the value for a given key in the result hash table, while
-@racket[hash-remove] deletes the mapping (if any) of a given key
-in the result hash table.
-
-@examples[#:eval demo
-(define i-ht (hash (list (pair 1 "apple") (pair 2 "banana"))))
-(hash-ref i-ht 1)
-(define i-ht2 (hash-set (hash-set i-ht 1 "Apple")
-                        3 "coconut"))
-(hash-ref i-ht2 1)
-(hash-ref i-ht2 3)
-(hash-ref i-ht 3)
-]}
-
-@defthing[hash-keys ((Hashof 'a 'b) -> (Listof 'a))]{
-
-Returns the keys mapped by a hash table, which can be mutable or
-immutable.
-
-@examples[#:eval demo
-(define i-ht (hash (list (pair 1 "apple") (pair 2 "banana"))))
-(hash-keys i-ht)
-]}
-
-@; - - - - - - - - - - - - - - - - - - - - -
-@subsection{Parameters}
-
-@deftogether[(
-@defthing[make-parameter ('a -> (Parameterof 'a))]
-@defthing[parameter-ref ((Parameterof 'a) -> 'a)]
-@defthing[parameter-set! ((Parameterof 'a) 'a -> Void)]
-)]{
-
-A parameter implements a kind dynamic binding. The
-@racket[make-parameter] function creates a fresh parameter,
-@racket[parameter-ref] accesses the parameter's current value, and
-@racket[parameter-set!] changes the parameter's current value (i.e.,
-at the nearest dynamic binding established with @racket[parameterize],
-if any).
-
-See also @racket[parameterize].}
 
 @; - - - - - - - - - - - - - - - - - - - - -
 @subsection{Equality}

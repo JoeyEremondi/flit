@@ -29,35 +29,23 @@
  #rx"type-case: .*expected a parenthesized variant name.*mt.*")
 
 ;; Double-check value restrction:
-(syn-test
- '(module m flit
-    (local [(define f (local [(define b (box (list)))]
-                        (lambda (x sel?)
-                          (if sel?
-                              (first (unbox b))
-                              (begin
-                                (set-box! b (list x))
-                                x)))))]
-      (begin
-        (f 10 #f)
-        (string-append "x" (f "hi" #t)))))
- #rx"typecheck failed: Number vs. String")
+
           
-;; Check that polymorphism inference in nested scopes
-;; doesn't go wrong:
-(syn-test
- '(module m flit
-    
-    (define member : ('a 'b -> 'c)
-      (lambda (e l)
-        #f))
-    
-    (local [(define (in? n)
-              (member n n))]
-      (if (string=? "in?" "in?") 
-          in?
-          (lambda (n) (void)))))
- #rx"typecheck failed: Void vs. Boolean")
+;; ;; Check that polymorphism inference in nested scopes
+;; ;; doesn't go wrong:
+;; (syn-test
+;;  '(module m flit
+;;     
+;;     (define member : ('a 'b -> 'c)
+;;       (lambda (e l)
+;;         #f))
+;;     
+;;     (local [(define (in? n)
+;;               (member n n))]
+;;       (if (string=? "in?" "in?") 
+;;           in?
+;;           (lambda (n) (void)))))
+;;  #rx"typecheck failed: Void vs. Boolean")
 
 (syn-test
  '(module m flit
@@ -85,23 +73,8 @@
  #rx"Number vs. .Listof S-Exp.")
 
 
-(syn-test
- '(module m flit
-    (define b (let ([y (box (list))])
-                (lambda () y)))
-    (define c b)
-    (set-box! (c) (list 1))
-    (string-append (first (unbox (c))) "x"))
- #rx"String vs. Number|Number vs. String")
 
-(syn-test
- '(module m flit
-    (define a (box (lambda (x) x)))
-    (define (set v)
-      (set-box! a v))
-    (set (lambda (x) (+ x 1)))
-    (set (lambda (x) (string-append x "1"))))
- #rx"String vs. Number|Number vs. String")
+
 
 (syn-test
  '(module m flit
@@ -279,12 +252,12 @@
     (x : Number))
  #rx"typecheck failed: Number vs[.] String")
 
-(syn-test
- '(module m flit
-    (lambda ([z : 'a])
-      (local [(x : 'a)
-              (y : 'a)
-              (define x 10)
-              (define y "apple")]
-        (+ x (string-length y)))))
- #rx"generic")
+;; (syn-test
+;;  '(module m flit
+;;     (lambda ([z : 'a])
+;;       (local [(x : 'a)
+;;               (y : 'a)
+;;               (define x 10)
+;;               (define y "apple")]
+;;         (+ x (string-length y)))))
+;;  #rx"generic")

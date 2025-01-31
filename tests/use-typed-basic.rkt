@@ -13,7 +13,6 @@
 
 (define (sgf [sg : SharedGraph$]) sg)
 
-(test (list) (unbox boxed-null))
 
 (test 1 (length (list kons)))
 
@@ -22,15 +21,10 @@
 
 (test 7 Seven-A)
 
-(test 19 (parameterize ([prm 19])
-           (get-prm)))
 
 (define bs : Bstring (generate-bstring 65 78))
 (test 65 (extract-first bs))
 
-(test "hi"
-      (type-case Linked-List (llnode "hi" (none))
-        [(llnode s next) s]))
 
 (test 14 (twice 7))
 (test 3 (a-macro))

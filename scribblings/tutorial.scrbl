@@ -581,37 +581,7 @@ Or, of course, declare the type separately:
   (equal? (first _items) "milk"))
 ]
 
-You can declare local functions and constants by using the
-@racket[local] form as a wrapper. The definitions that appear after
-@racket[local] are visible only within the @racket[local] form, and
-the result of the @racket[local] form is the value of the expression
-that appears after the definitions. The definitions must be grouped
-with square brackets.
 
-@interaction[
-(local [(define pi-ish 3)
-        (define (approx-circle-area _r)
-          (* pi-ish (* _r _r)))]
-   (approx-circle-area 2))
-(eval:error (code:line pi-ish (code:comment @#,t{not visible outside the @racket[local]})))
-(eval:error (code:line approx-circle-area (code:comment @#,t{not visible outside the @racket[local]})))
-]
-
-The @racket[local] form is most often used inside a function to define
-a helper function or to avoid a repeated computating involving the
-function arguments.
-
-@interaction[
-(define (discard-first-if-fruit _items)
-  (local [(define _a (first _items))]
-    (cond
-     [(equal? _a "apple") (rest _items)]
-     [(equal? _a "banana") (rest _items)]
-     [else _items])))
-(discard-first-if-fruit '("apple" "potato"))
-(discard-first-if-fruit '("banana" "potato"))
-(discard-first-if-fruit '("potato" "apple"))
-]
 
 The @racket[let] and @racket[letrec] forms are similar to
 @racket[local], but they are somewhat more compact by avoiding the
@@ -1433,87 +1403,7 @@ contrast, if you write definitions inside @racket[(module+ test
 @racket[(module+ test ....)], but the enclosing module will not see
 the definitions.
 
-@; ----------------------------------------
-@section[#:tag "state-tutorial"]{State}
 
-@nested[#:style 'inset]{ @bold{Warning:} If you are using Flit with a
-programming-languages course, then the instructor has almost certainly
-disallowed the constructs in this chaper for use in your homework
-solutions, except as specifically allowed. Don't use @racket[set!],
-@racket[begin], boxes, or vectors unless the instructor says that you
-can. If you're tempted to use one of those, you're doing it wrong.}
-
-We have so far described @racket[define] as naming constants, but
-names bound by @racket[define] are not necessarily constant. The value
-associated to the name can be changed using @racket[set!].
-
-@interaction[
-(define gravity 6.6e-11)
-gravity
-(set! gravity 6.5e-11)
-gravity
-]
-
-The type of a @racket[set!] expression is @racket[Void], meaning that
-it doesn't return a useful value, and the useless value doesn't even
-print as a result. If you need to change a variable and then return a
-value, use @racket[begin] to sequence the operations. The value of a
-@racket[begin] form is the value of its last expression.
-
-@interaction[
-(define counter 0)
-(define (fresh-number!)
-  (begin
-    (set! counter (add1 counter))
-    counter))
-(fresh-number!)
-(fresh-number!)
-]
-
-The @litchar{!} at the end of @racket[fresh-number!] is a convention
-to warn readers that calling the function can have a side effect.
-
-Although you can set a variable's value using @racket[set!], you can't
-directly pass a variable to another function that changes the
-variable's value. A @racket[set!] on a function's argument would
-change the argument variable's value, but would have no effect on the
-caller's variables. To make a mutable location that can be passed
-around, Flit supports @defterm{boxes}. You can think of a box as a
-mutable object that has a single field, where @racket[box] creates a
-fresh object, @racket[unbox] extracts the object's field, and
-@racket[set-box!] changes the object's field.
-
-@interaction[
-(define counter1 (box 0))
-(define counter2 (box 0))
-(define (fresh-number-at! c)
-  (begin
-    (set-box! c (add1 (unbox c)))
-    (unbox c)))
-(fresh-number-at! counter1)
-(fresh-number-at! counter1)
-(fresh-number-at! counter2)
-(fresh-number-at! counter1)
-]
-
-A @defterm{vector} is a traditional mutable array. Every element of a
-vector must have the same type, which can be inferred from the value
-that you suply when making a vector to serve as the initial value for
-each of the vector's slots. The @racket[vector] function creates a vector,
-@racket[vector-ref] accesses a slot value by position, and
-@racket[vector-set!] changes a slot value by position.
-
-@interaction[
-(define counters (make-vector 2 0))
-(define (fresh-number-at-index! i)
-  (begin
-    (vector-set! counters i (add1 (vector-ref counters i)))
-    (vector-ref counters i)))
-(fresh-number-at-index! 0)
-(fresh-number-at-index! 0)
-(fresh-number-at-index! 1)
-(fresh-number-at-index! 0)
-]
 
 
 @; ----------------------------------------

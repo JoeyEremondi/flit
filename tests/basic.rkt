@@ -4,7 +4,7 @@
           (typed-in racket/base
                     [expt : (Number Number -> Number)]
                     [+ : (Number Number -> Number)]
-                    [vector-immutable : ('a 'a 'a -> (Vectorof 'a))])
+                    )
           [+ plus]))
 
 (define x : S-Exp `(a 2 "c" '(d) #f))
@@ -14,25 +14,13 @@
 
 (test 1024 (expt 2 10))
 (test 7 (plus 3 4))
-(test (vector 3 2 0) (vector-immutable 3 2 0))
-(test (make-vector 3 2) (vector-immutable 2 2 2))
-(test (make-vector 3 "apple") (vector-immutable "apple" "apple" "apple"))
 
 (define apply-identity : (('a -> 'a) 'a -> (Listof 'a))
   (lambda (id x)
     (list (id x) (id x))))
 
-(module+ test
-  (test (box 10) (box-number 10)))
-(module+ other
-  (+ (unbox (box 10)) (unbox (box-number 10))))
 
-(box-number : (Number -> (Boxof Number)))
-(define box-number
-  (lambda (n)
-    (if (= n 0)
-        (box 0)
-        (box n))))
+
 
 (test 12 (+ (max (add1 7) 0) (min (sub1 5) 9)))
 
@@ -65,29 +53,26 @@
 (test #t (s-exp-list? (list->s-exp (list))))
 (test #t (s-exp-list? (list->s-exp (list (number->s-exp 2)))))
 
-(test 5 (local [(x : Number)
-                (define x 10)]
-          (begin
-            (set! x 5)
-            x)))
+
 
 (test 5 (call/cc (lambda (x) 5)))
 (test 5 (let/cc x 5))
-(test 7 (local [(define y (lambda (q) (+ q 3)))
-                (y : (Number -> Number))]
-          (if (= 0 (call/cc (lambda (k)
-                              (begin
-                                (set! y k)
-                                0))))
-              (y 2)
-              7)))
-(test 7 (local [(define y (lambda (q) (+ q 3)))]
-          (if (= 0 (let/cc k
-                     (begin
-                       (set! y k)
-                       0)))
-              (y 2)
-              7)))
+
+;; (test 7 (local [(define y (lambda (q) (+ q 3)))
+;;                 (y : (Number -> Number))]
+;;           (if (= 0 (call/cc (lambda (k)
+;;                               (begin
+;;                                 (set! y k)
+;;                                 0))))
+;;               (y 2)
+;;               7)))
+;; (test 7 (local [(define y (lambda (q) (+ q 3)))]
+;;           (if (= 0 (let/cc k
+;;                      (begin
+;;                        (set! y k)
+;;                        0)))
+;;               (y 2)
+;;               7)))
 
 ;; (test 15 (local [(x : 'a)
 ;;                  (y : 'a)
@@ -95,13 +80,11 @@
 ;;                  (define y "apple")]
 ;;            (+ x (string-length y))))
 
-(test 15 (local [(ident : ('a -> 'a))
-                 (define (ident x)
-                   x)]
-           (+ (ident 10) (string-length (ident "hello")))))
+;; (test 15 (local [(ident : ('a -> 'a))
+;;                  (define (ident x)
+;;                    x)]
+;;            (+ (ident 10) (string-length (ident "hello")))))
 
-(local [(define x (lambda ((x : String)) x))]
-  (set! x (lambda (y) (string-append y y))))
 
 (define il (list (lambda (x) x)))
 (test 5 ((first il) 5))
@@ -190,11 +173,7 @@
   (node [s : String]
         [next : (Listof SharedGraph$)]))
 
-(define g1 : (Listof SharedGraph$)
-  (shared ([PVD (node "Providence" (list ORH BOS))]
-           [ORH (node "Worcester" (list PVD BOS))]
-           [BOS (node "Boston" (list PVD ORH))])
-    (list PVD ORH BOS)))
+
 
 (define n (if #f
               (+ (time 10) 1)
@@ -202,8 +181,7 @@
 
 (test 5 (length (build-list 5 (lambda (i) (if (zero? i) "s" "f")))))
 
-(when (zero? 5) 1 "x")
-(unless (odd? 5) 1 "x")
+
 
 (test #t (member 1 (list 3 2 1)))
 (test #f (member 6 (list 3 2 1)))
@@ -241,39 +219,8 @@
 (test 5 (my-length '(1 2 3 4 5)))
 (test 4 (my-length '(a b c d)))
 
-(define ht (make-hash (list)))
-(test (none) (hash-ref ht "a"))
-(test (void) (hash-set! ht "a" 1))
-(test (some 1) (hash-ref ht "a"))
-(test (list "a") (hash-keys ht))
-(test (void) (hash-remove! ht "a"))
-(define ht2 (make-hash (list (values 1 'a) (values 3 'b))))
-(test (some 'a) (hash-ref ht2 1))
-(test (some 'b) (hash-ref ht2 3))
-(test (none) (hash-ref ht2 5))
-(test 4 (let ([l (hash-keys ht2)])
-          (+ (first l) (second l))))
 
-(define ht3 (hash (list (values "a" 'a) (values "b" 'b))))
-(test (some 'a) (hash-ref ht3 "a"))
-(test (some 'b) (hash-ref ht3 "b"))
-(define ht4 (hash-set ht3 "c" 'c))
-(test (some 'a) (hash-ref ht4 "a"))
-(test (some 'c) (hash-ref ht4 "c"))
-(define ht5 (hash-remove ht4 "b"))
-(test (some 'a) (hash-ref ht5 "a"))
-(test (some 'c) (hash-ref ht5 "c"))
-(test (none) (hash-ref ht5 "b"))
 
-(define-type Linked-List
-  (llnode [s : String]
-          [next : (Optionof Linked-List)]))
-
-(define lls (shared ([x (llnode "a" (some x))]
-                     [y (some (llnode "b" (none)))])
-              (list x (some-v y))))
-(test "a" (llnode-s (some-v (llnode-next (first lls)))))
-(test "b" (llnode-s (second lls)))
 
 (test #t (s-exp-symbol? `a))
 (test `3 (second (s-exp->list `(a ,(number->s-exp (+ 1 2)) c))))
@@ -282,14 +229,13 @@
       `(quasiquote (unquote-splicing (list `3 `4))))
 
 (define kons cons)
-(define boxed-null (box (list)))
+
 
 (module+ test
   (define (kons v) v)
   (define apple-string "apple")
   (define-type Fish (trout [n : Number]) (bass))
-  (test apple-string (llnode-s (llnode (kons apple-string)
-                                       (kons (none))))))
+  )
 
 (module+ test
   (test "apple" apple-string)
@@ -323,27 +269,9 @@
   #'(+ 1 2))
 (test 3 (a-macro whatever you like))
 
-(test 'ok (begin
-            (local ((define vertical (lambda (tree) : (Optionof 'a)
-                                             (vertical tree))))
-              vertical)
-            'ok))
 
-(define prm (make-parameter 5))
-(define sprm (make-parameter "5"))
-(test 5 (parameter-ref prm))
-(test (void) (parameter-set! prm 7))
-(test 7 (parameter-ref prm))
-(test 8
-      (parameterize ([prm 8])
-        (parameter-ref prm)))
-(define (get-prm) (parameter-ref prm))
-(define get-prm-getter : ((Parameterof 'a) -> (-> 'a))
-  (lambda (p)
-    (lambda ()
-      (parameter-ref p))))
-(test 7 ((get-prm-getter prm)))
-(test "5" ((get-prm-getter sprm)))
+
+
 
 (define (add-char s c) (string-append s (list->string (list c))))
 (test #\a (string-ref "cat" 1))
@@ -408,9 +336,6 @@
      (has-type (second l) : Number)))
 (test 3 (add-two (list 1 2)))
 
-(define (build-hash classhash)
-  (hash-set classhash `(something) 'another))
-(test (some 'another) (hash-ref (build-hash (hash (list))) `(something)))
 
 ;; does define-values work correctly?
 (define-values (aoeua aoeub) (values 3 "banana"))

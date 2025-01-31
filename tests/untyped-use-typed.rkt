@@ -2,6 +2,5 @@
 
 (require "basic.rkt")
 
-(test "hi"
-      (type-case Linked-List (llnode "hi" (none))
-        [(llnode s next) s]))
+
+;;TODO put a test back here

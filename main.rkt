@@ -46,20 +46,20 @@
                      [lambda: lambda]
                      [lambda: λ]
                      [begin: begin]
-                     [local: local]
+                     ;; [local: local]
                      [letrec: letrec] [let*: let] [let*: let*]
-                     [shared: shared]
+                     ;; [shared: shared]
                      [parameterize: parameterize]
                      [cond: cond]
                      [case: case]
                      [if: if]
-                     [when: when]
-                     [unless: unless]
+                     ;; [when: when]
+                     ;; [unless: unless]
                      [or: or]
                      [and: and]
                      [quote: quote]
                      [quasiquote: quasiquote]
-                     [set!: set!]
+                     ;; [set!: set!]
                      [time: time]
                      [trace: trace]
                      [require: require]
@@ -114,7 +114,9 @@
          add1 sub1 zero? odd? even?
          modulo remainder floor ceiling
          symbol=? string=? equal? eq? not
-         error try call/cc let/cc
+         error
+         ;;try
+         call/cc let/cc
 
          string->symbol symbol->string
          string-append to-string
@@ -122,11 +124,11 @@
 
          char=? string-ref substring string-length string->list list->string
 
-         (rename-out [make-hash: make-hash]
-                     [hash: hash]
-                     [hash-ref: hash-ref])
-         hash-set! hash-remove! hash-keys
-         hash-set hash-remove
+         ;; (rename-out [make-hash: make-hash]
+         ;;             [hash: hash]
+         ;;             [hash-ref: hash-ref])
+         ;; hash-set! hash-remove! hash-keys
+         ;; hash-set hash-remove
 
          s-exp-symbol? s-exp->symbol symbol->s-exp
          s-exp-number? s-exp->number number->s-exp
@@ -139,13 +141,13 @@
          ;; no type, so for use only in untyped:
          s-exp s-exp-content tuple tuple-content
          
-         (rename-out [box: box]
-                     [unbox: unbox]
-                     [set-box!: set-box!])
+         ;; (rename-out [box: box]
+         ;;             [unbox: unbox]
+         ;;             [set-box!: set-box!])
 
-         (rename-out [vector: vector]
-                     [vector-set!: vector-set!])
-         make-vector vector-ref vector-length
+         ;; (rename-out [vector: vector]
+         ;;             [vector-set!: vector-set!])
+         ;; make-vector vector-ref vector-length
 
          (rename-out [values: values]
                      [pair: pair])
@@ -155,7 +157,7 @@
 
          (rename-out [identity: identity])
 
-         make-parameter parameter-ref parameter-set!
+         ;; make-parameter parameter-ref parameter-set!
 
          void
          
@@ -167,10 +169,10 @@
                      [s-expression S-Exp])
          -> 
          (rename-out [listof: Listof]
-                     [boxof: Boxof]
-                     [parameterof: Parameterof]
-                     [vectorof: Vectorof]
-                     [hashof: Hashof]
+                     ;; [boxof: Boxof]
+                     ;; [parameterof: Parameterof]
+                     ;; [vectorof: Vectorof]
+                     ;; [hashof: Hashof]
                      [void: Void])
 
          Optionof

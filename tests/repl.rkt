@@ -29,19 +29,11 @@
 
 (te #rx"Number vs[.] String" '(define x "hello"))
 
-(tl "" '(define b (box (list))))
-(tl "- (Boxof (Listof '_a))\n'#&()\n" 'b)
-(tl "- Void\n" '(set-box! b (list 'a)))
-(tl "- (Boxof (Listof Symbol))\n'#&(a)\n" 'b)
-
 (tl "" '(define-type (M 'a)
           [v (fd : 'a)]))
 (te #rx"duplicate definition for identifier" '(define-type (M 'a)
                                                 [M (v : 'a)]))
 
-(tl "" '(define xb (box empty)))
-(tl "" '(define yb (box empty)))
-(te (regexp-quote "(Listof (Boxof (Listof '_a))) vs. (Boxof (Listof '_b))") '(cons xb yb))
 
 ;; Scope of type variables:
 ;(tl "" '(define f (lambda ([x : 'a] [y : 'b]) (has-type x : 'b))))
@@ -53,19 +45,7 @@
 ;;               [g (lambda ([x : 'a] [y : 'b]) x)])
 ;;        (values f g)))
 (te (regexp-quote "generic") '(define x : 'a (cons (has-type 1 : 'a) empty)))
-;; (tl "- (Number * (Number -> Number))\n(values 1 #<procedure:f>)\n"
-;;     '(values
-;;       (has-type 1 : Number)
-;;       (letrec ([f (lambda ([x : 'a]) x)]) f)))
-;; (tl "- (('_a -> '_a) * Number)\n(values #<procedure:f> 1)\n"
-;;     '(values
-;;       (letrec ([f (lambda ([x : 'a]) x)]) f)
-;;       (has-type 1 : 'a)))
-(te (regexp-quote "generic")
-    '(lambda ([x : 'a])
-       (local [(define one : 'a 1)
-               (define two : 'a "two")]
-         #f)))
+
 
 (te #rx"type variable in an alias is not yet in scope" '(define-type-alias Foo 'a))
 (tl "" '(define-type-alias (Foo 'a) 'a))
