@@ -219,15 +219,7 @@ empty                     ; => '()
 `(1 2 3) ; => `(1 2 3), but says "S-Expression" first
 (first (s-exp->list `(1 2 3))) ; => `1, but says "S-Expression" first
 
-;; Vectors
 
-(vector 1 2 3 4)            ; => '#(1 2 3 4), but shows "(Vectorof Number)"
-(vector-ref (vector 1 2) 0) ; => 1
-
-;; Boxes
-
-(box 1)                   ; => '#&1
-(unbox (box 1))           ; => 1
 
 ;; Tuples
 
@@ -337,26 +329,9 @@ color ; => 'red
 ;; Local
 ;;  (local [<definition> ...] <expr>)
 
-(local [(define x 10)]
-  (+ x x))                ; => 20
 
-#;x                       ; error: unbound identifier
 
-(define (to-the-fourth x)
-  (local [(define (squared n)
-            (* n n))]
-    (* (squared x) (squared x))))
-(to-the-fourth 10)        ; => 10000
 
-(local [(define (odd? x)
-          (if (zero? x)
-              #f
-              (even? (- x 1))))
-        (define (even? x)
-          (if (zero? x)
-              #t
-              (odd? (- x 1))))]
-  (odd? 12))              ; => #f
 
 ;; Let (more traditional but less regular)
 ;;  (let ([<id> <expr>] ...) <expr>)
@@ -451,36 +426,7 @@ color ; => 'red
 (map (lambda (x) (* x x))
      (list 1 2 3))        ; => (list 1 4 9)
 
-;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Side-effects
-;;  IMPORTANT: in this class using a side-effect is
-;;             usually wrong; avoid all side-effects
 
-;; set! and begin
-;;  (set! <id> <expr>)
-;;  (begin <expr>*)
-
-(define count 0)
-
-(set! count (+ count 1))  ; =>
-count                     ; => 1
-
-(begin
-  (set! count (+ count 1))
-  count)                  ; => 2
-
-(local [(define x '())]   ; note: demonstrates set! in local,
-  (begin                  ;       but it's terrible style
-    (set! x (cons 1 x))   ;
-    (set! x (cons 2 x))   ;
-    x))                   ; => '(2 1)
-
-;; set-box! is a function:
-
-(define B (box 10))
-(set-box! B 12)           ; =>
-B                         ; => (box 12)
-(unbox B)                 ; => 12
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Polymorphic functions
@@ -494,10 +440,7 @@ identity       ; => #<procedure>, but shows "('a -> 'a)" first
 empty  ; => '(), but shows "(list 'a)" first
 cons   ; => #<procedure>, but shows "('a (Listof 'a) -> 'a)" first
 
-(define b (box empty))
-b      ; => '#&(), but shows "(Boxof (Listof '_a))" first
-(set-box! b (list 1)) ; =>
-#;(set-box! b (list "a")) ; error: Number vs String
+
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Testing
