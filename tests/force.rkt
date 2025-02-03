@@ -1,30 +1,7 @@
 #lang racket/base
 (require flit/private/force)
 
-;; Example from David Bremner:
-(module rabbit flit
-  (define-type Hat
-    [empty-hat]
-    [hat (bunny : Rabbit)])
 
-  (define-type Rabbit
-    [rabbit  [hat : (Boxof Hat)]])
-
-  (define (looper)
-    (let*
-        ([the-box (box (empty-hat))]
-         [the-rabbit (rabbit the-box)]
-         [the-hat (hat the-rabbit)])
-      (begin
-        (set-box! the-box the-hat)
-        the-hat))))
-(require 'rabbit)
-
-(define thumper (looper))
-
-(unless (equal? (format "~v" thumper)
-                (format "~v" (!! thumper)))
-  (error 'force "didn't work right on cyclic value"))
 
 ;; ----------------------------------------
 

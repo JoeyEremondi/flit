@@ -1,93 +1,95 @@
 #lang flit
 
-(define (s-exp-match? pattern s)
-  (local [;; main matching routine is called after checking
-          ;; that the pattern is well-formed:
-          (define (s-exp-match? pattern s)
-            (cond
-             [(s-exp-list? pattern)
-              (and (s-exp-list? s)
-                   (list-match? (s-exp->list pattern)
-                                (s-exp->list s)))]
-             [(eq? 'ANY (s-exp->symbol pattern))
-              #t]
-             [(eq? 'SYMBOL (s-exp->symbol pattern))
-              (s-exp-symbol? s)]
-             [(eq? 'NUMBER (s-exp->symbol pattern))
-              (s-exp-number? s)]
-             [(eq? 'STRING (s-exp->symbol pattern))
-              (s-exp-string? s)]
-             [else
-              ;; Any other symbol is a literal:
-              (and (s-exp-symbol? s)
-                   (eq? (s-exp->symbol s)
-                        (s-exp->symbol pattern)))]))
+;; main matching routine is called after checking
+;; that the pattern is well-formed:
+(define (s-exp-match?* pattern s)
+  (cond
+    [(s-exp-list? pattern)
+     (and (s-exp-list? s)
+          (list-match? (s-exp->list pattern)
+                       (s-exp->list s)))]
+    [(eq? 'ANY (s-exp->symbol pattern))
+     #t]
+    [(eq? 'SYMBOL (s-exp->symbol pattern))
+     (s-exp-symbol? s)]
+    [(eq? 'NUMBER (s-exp->symbol pattern))
+     (s-exp-number? s)]
+    [(eq? 'STRING (s-exp->symbol pattern))
+     (s-exp-string? s)]
+    [else
+     ;; Any other symbol is a literal:
+     (and (s-exp-symbol? s)
+          (eq? (s-exp->symbol s)
+               (s-exp->symbol pattern)))]))
           
-          ;; check a list of s-expr against a list of patterns,
-          ;; handling '... among the patterns
-          (define (list-match? patterns ses)
-            (cond
-             [(empty? patterns)
-              (empty? ses)]
-             [(and (cons? (rest patterns))
-                   (s-exp-symbol? (first (rest patterns)))
-                   (eq? '... (s-exp->symbol (first (rest patterns)))))
-              ;; handle ...
-              (cond
-               [(= (- (length patterns) 2)
-                   (length ses))
-                ;; 0 matches may work
-                (list-match? (rest (rest patterns)) ses)]
-               [(empty? ses)
-                #f]
-               [else
-                ;; Need at least 1 match, then try again:
-                (and (s-exp-match? (first patterns)
-                                   (first ses))
-                     (list-match? patterns
-                                  (rest ses)))])]
-             [(empty? ses)
-              #f]
-             [else
-              (and (s-exp-match? (first patterns)
-                                 (first ses))
-                   (list-match? (rest patterns)
-                                (rest ses)))]))
+;; check a list of s-expr against a list of patterns,
+;; handling '... among the patterns
+(define (list-match? patterns ses)
+  (cond
+    [(empty? patterns)
+     (empty? ses)]
+    [(and (cons? (rest patterns))
+          (s-exp-symbol? (first (rest patterns)))
+          (eq? '... (s-exp->symbol (first (rest patterns)))))
+     ;; handle ...
+     (cond
+       [(= (- (length patterns) 2)
+           (length ses))
+        ;; 0 matches may work
+        (list-match? (rest (rest patterns)) ses)]
+       [(empty? ses)
+        #f]
+       [else
+        ;; Need at least 1 match, then try again:
+        (and (s-exp-match? (first patterns)
+                           (first ses))
+             (list-match? patterns
+                          (rest ses)))])]
+    [(empty? ses)
+     #f]
+    [else
+     (and (s-exp-match? (first patterns)
+                        (first ses))
+          (list-match? (rest patterns)
+                       (rest ses)))]))
 
-          ;; check that `pattern' is well-formed:
-          (define (check-pattern pattern)
-            (cond
-             [(s-exp-list? pattern)
-              (check-patterns (s-exp->list pattern) #f)]
-             [(not (s-exp-symbol? pattern))
-              (error 's-exp-match? 
-                     (string-append "bad pattern: "
-                                    (to-string pattern)))]
-             [(eq? '... (s-exp->symbol pattern))
-              ;; if `check-patterns' didn't see it, it's misplaced
-              (error 's-exp-shape? "misplaced `...' in pattern")]
-             [else 
-              ;; any other symbol is ok --- either special or literal
-              (void)]))
+;; check that `pattern' is well-formed:
+(define (check-pattern pattern)
+  (cond
+    [(s-exp-list? pattern)
+     (check-patterns (s-exp->list pattern) #f)]
+    [(not (s-exp-symbol? pattern))
+     (error 's-exp-match? 
+            (string-append "bad pattern: "
+                           (to-string pattern)))]
+    [(eq? '... (s-exp->symbol pattern))
+     ;; if `check-patterns' didn't see it, it's misplaced
+     (error 's-exp-shape? "misplaced `...' in pattern")]
+    [else 
+     ;; any other symbol is ok --- either special or literal
+     (void)]))
 
-          ;; check that a list of patterns is ok, possibly with
-          ;; `...', but only one `...':
-          (define (check-patterns patterns saw-dots?)
-            (cond
-             [(empty? patterns) (void)]
-             [(and (cons? (rest patterns))
-                   (s-exp-symbol? (first (rest patterns)))
-                   (eq? '... (s-exp->symbol (first (rest patterns)))))
-              (if saw-dots?
-                  (error 's-exp-shape? "multiple `...' in pattern")
-                  (check-patterns (rest (rest patterns)) #t))]
-             [else
-              (begin
-                (check-pattern (first patterns))
-                (check-patterns (rest patterns) saw-dots?))]))]
-    (begin
-      (check-pattern pattern)
-      (s-exp-match? pattern s))))
+;; check that a list of patterns is ok, possibly with
+;; `...', but only one `...':
+(define (check-patterns patterns saw-dots?)
+  (cond
+    [(empty? patterns) (void)]
+    [(and (cons? (rest patterns))
+          (s-exp-symbol? (first (rest patterns)))
+          (eq? '... (s-exp->symbol (first (rest patterns)))))
+     (if saw-dots?
+         (error 's-exp-shape? "multiple `...' in pattern")
+         (check-patterns (rest (rest patterns)) #t))]
+    [else
+     (begin
+       (check-pattern (first patterns))
+       (check-patterns (rest patterns) saw-dots?))]))
+
+(define (s-exp-match? pattern s)
+  (let 
+      ((_
+        (check-pattern pattern)))
+        (s-exp-match?* pattern s)))
 
 (module+ test
   (print-only-errors #t)

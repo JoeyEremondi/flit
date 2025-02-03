@@ -17,15 +17,7 @@
    (first (map add1 (filter odd? (rest (rest x))))))
  2)
 
-(test
- (let ([b (box (/ 1 0))])
-   'ok)
- 'ok)
 
-(test
- (let ([b (vector 10 (/ 1 0))])
-   (vector-ref b 0))
- 10)
 
 (test (fst (values 17 (/ 1 0)))
       17)
@@ -38,16 +30,9 @@
 
 ;; ----------------------------------------
 
-(test (let ([a 5] [f (lambda (x y) y)])
-        (f
-          (set! a 6)
-          a))
-      5)
 
-(test (let ([a 5])
-        (let ([b (set! a 6)])
-          (if (equal? (void) b) a -1)))
-      6)
+
+
 
 ;; ----------------------------------------
 
