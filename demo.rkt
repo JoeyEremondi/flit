@@ -450,9 +450,9 @@ cons   ; => #<procedure>, but shows "('a (Listof 'a) -> 'a)" first
 (test "" (+ 5 5) 10)         ; => displays (good 10 10 "...")
 (test "" (+ 5 4) 10)         ; => error-displays (bad 9 10 "...")
 
-(test/exn (cond) "no matching")            ; => displays (good ...)
-(test/exn (cond) "bad dog")                ; => error-displays (exception ...)
-(test/exn (cond [#t 10]) "no matching")    ; => error-displays (exception ...)
+(test/exn "" (cond) "no matching")            ; => displays (good ...)
+(test/exn "" (cond) "bad dog")                ; => error-displays (exception ...)
+(test/exn "" (cond [#t 10]) "no matching")    ; => error-displays (exception ...)
 
 (print-only-errors #t)
 (test "" (+ 5 5) 10)         ; => no display
