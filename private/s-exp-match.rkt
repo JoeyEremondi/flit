@@ -150,13 +150,13 @@
   (test "" (s-exp-match? `((a ...) b ...) `((a a a) b c b b))
         #f)
 
-  (test/exn (s-exp-match? `... `10)
+  (test/exn "" (s-exp-match? `... `10)
             "misplaced")
-  (test/exn (s-exp-match? `(...) `10)
+  (test/exn "" (s-exp-match? `(...) `10)
             "misplaced")
-  (test/exn (s-exp-match? `(a ... b ...) `10)
+  (test/exn "" (s-exp-match? `(a ... b ...) `10)
             "multiple")
-  (test/exn (s-exp-match? `10 `10)
+  (test/exn "" (s-exp-match? `10 `10)
             "bad pattern")
 
   )
