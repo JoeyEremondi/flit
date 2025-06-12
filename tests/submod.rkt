@@ -33,4 +33,4 @@
                     [p p2]))
 
 (print-only-errors #t)
-(test (- (g (f (+ n n2))) (+ p p2)) 22)
+(test "" (- (g (f (+ n n2))) (+ p p2)) 22)

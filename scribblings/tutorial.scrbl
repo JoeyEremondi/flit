@@ -844,7 +844,7 @@ for making sure that you've considered all cases.
 @section[#:tag "testing-tutorial"]{Testing and Debugging}
 
 Flit includes built-in support for testing your programs. The
-@racket[test] form takes two expressions and makes sure that they
+@racket[test] form takes a description string and two expressions and makes sure that they
 produce the same value. Typically, the first expression is a function
 call, and the second expression is the expected result of the
 function. The @racket[test] form prints output that starts ``good'' if
@@ -855,9 +855,9 @@ the test passes or ``bad'' if it fails.
   (cond
     [(equal? s "milk") 'good]
     [else 'not-as-good]))
-(test (taste "milk") 'good)
-(test (taste "brussel sprouts") 'not-as-good)
-(test (taste "beets") 'bad)
+(test "Good" (taste "milk") 'good)
+(test "Not as good" (taste "brussel sprouts") 'not-as-good)
+(test "Bad " (taste "beets") 'bad)
 ]
 
 They say that no news is good news. To suppress the output for passing
@@ -866,13 +866,16 @@ tests, so that only failing test strigger output, use
 
 @interaction[
 (print-only-errors #t)
-(test (taste "kale") 'not-as-good)
-(test (taste "anchovies") 'bad)
+(test "Not as good 2" (taste "kale") 'not-as-good)
+(test "Bad 2" (taste "anchovies") 'bad)
 ]
 
 To test that an expression reports an expected error, use
-@racket[test/exn]. The @racket[test/exn] form's section expression
-should produce a string, and @racket[test/exn] checks that an error is
+@racket[test/exn].
+Like @racket[test], this form takes a description string
+and an expression to test, but also a second string with part of
+an error message.
+Then @racket[test/exn] checks that an error is
 reported where the string occurs in the error message. You can only
 test for errors that your program specifically reports using the
 @racket[error] function.
@@ -880,8 +883,8 @@ test for errors that your program specifically reports using the
 @interaction[
 (define (always-fail [n : Number]) : Number
   (error 'always-fail "we're not actually returning a number"))
-(test/exn (always-fail 42) "not actually")
-(test/exn (always-fail 42) "should not get called")
+(test/exn "Fail 42" (always-fail 42) "not actually")
+(test/exn "Fail 42 wrong error" (always-fail 42) "should not get called")
 ]
 
 When you write a program (in the definitions area of DrRacket), the
@@ -894,7 +897,7 @@ moves its content to the end of the program.
 
 @racketblock[
 (module+ test
-  (test (retaste "milk") '(still good)))
+  (test "Retaste good" (retaste "milk") '(still good)))
 code:blank
 (define (retaste s)
   (list 'still (taste s)))

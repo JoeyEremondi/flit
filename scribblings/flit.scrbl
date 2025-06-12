@@ -277,7 +277,7 @@ runs the @racketidfont{test} submodule):
 
 @racketblock[
  (module+ test
-   (test 11 (add-one 10)))
+   (test "Add one test" 11 (add-one 10)))
 
  (define (add-one n)
    (+ 1 n))
@@ -753,8 +753,8 @@ appear with @racket[else].
 
 
 @deftogether[(
-@defform[(test expr expr)]
-@defform[(test/exn expr string-expr)]
+@defform[(test desc expr expr)]
+@defform[(test/exn desc expr string-expr)]
 )]{
 
 @tutorial["testing-tutorial"]

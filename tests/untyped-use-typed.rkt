@@ -1,4 +1,5 @@
 #lang flit #:untyped
+(print-only-errors #t)
 
 (require "basic.rkt")
 

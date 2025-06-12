@@ -26,6 +26,6 @@
 
 (print-only-errors #t)
 
-(test (parse `3) (numS 3))
-(test (parse `(+ 1 (- 2 3))) (plusS (numS 1) (bminusS (numS 2) (numS 3))))
-(test (parse `(* (- 1) 3)) (multS (uminusS (numS 1)) (numS 3)))
+(test "" (parse `3) (numS 3))
+(test "" (parse `(+ 1 (- 2 3))) (plusS (numS 1) (bminusS (numS 2) (numS 3))))
+(test "" (parse `(* (- 1) 3)) (multS (uminusS (numS 1)) (numS 3)))
