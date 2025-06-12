@@ -687,7 +687,7 @@
   (check-top
    (lambda (stx)
      (syntax-case stx ()
-       [(_ e ...) (if lazy?
+       [(_ desc:string e ...) (if lazy?
                       (syntax/loc stx (test (!! e) ...))
                       (syntax/loc stx (test e ...)))]))))
 
@@ -695,14 +695,14 @@
   (check-top
    (lambda (stx)
      (syntax-case stx ()
-       [(_ e ...) (if lazy?
+       [(_ desc:string e ...) (if lazy?
                       (syntax/loc stx (test/exn (!! e) ...))
                       (syntax/loc stx (test/exn e ...)))]))))
 
 ;; Shorthand for making sure a term runs without error
 ;; without caring what it returns
-(define-syntax-rule (test/noerror t)
-  (test (let ([_ t]) #t) #t))
+(define-syntax-rule (test/noerror desc t)
+  (test desc (let ([_ t]) #t) #t))
 
 (define-syntax (module+: stx)
   (define (module-begin-there s)
@@ -3295,14 +3295,14 @@
                                                      (list a a)
                                                      B)))
                      (cons #'test: (POLY a (make-arrow #f 
-                                                       (list a a)
+                                                       (list STR a a)
                                                        (make-vd #f))))
 
                      (cons #'test/noerror  (POLY a (make-arrow #f
-                                                               (list a)
+                                                               (list STR  a)
                                                                (make-vd #f))))
                      (cons #'test/exn: (POLY a (make-arrow #f 
-                                                           (list a
+                                                           (list STR a
                                                                  STR)
                                                            (make-vd #f))))
                      (cons #'print-only-errors (make-arrow #f 
