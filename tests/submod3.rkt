@@ -11,5 +11,5 @@
 (require (submod "." m1 sub))
 
 (print-only-errors #t)
-(test (g 1) 1)
-(test (g "x") "x")
+(test "" (g 1) 1)
+(test "" (g "x") "x")
