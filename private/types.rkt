@@ -204,7 +204,7 @@
                                (type-src type))])))
 
 (define (gen-tvar src [arrow? #f] [rigid? #f])
-      (debugln "Making type variable ~s   rigid? ~s" src rigid?)
+      ;; (debugln "Making type variable ~s   rigid? ~s" src rigid?)
       ((if arrow? make-arrow-tvar make-tvar) src #f #f rigid?))
 
 (define ((type->datum tmap) t)
@@ -709,7 +709,7 @@
    [else t]))
 
 (define (resolve-defn-types env)
-  (debugln "ENV resolve-defn-types: ~s" env)
+  ;; (debugln "ENV resolve-defn-types: ~s" env)
   (map (lambda (p)
          (let ([id (car p)]
                [t (cdr p)])

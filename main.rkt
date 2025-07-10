@@ -687,12 +687,15 @@
   (check-top
    (lambda (stx)
      (syntax-case stx ()
-       [(_ desc:string e ...) (if lazy?
-                      (syntax/loc stx (test (!! e) ...))
-                      (syntax/loc stx (test e ...)))]
+       [(_ desc:string e e2)  (if lazy?
+                      (syntax/loc stx (test (!! e) e2))
+                      (syntax/loc stx (test e e2)))]
        [(_ e e2) (if lazy?
                       (syntax/loc stx (test (!! e) e2))
-                      (syntax/loc stx (test e e2)))]))))
+                      (syntax/loc stx (test e e2)))]
+       [(_ desc:string e ...)  (if lazy?
+                      (syntax/loc stx (test (!! e) ...))
+                      (syntax/loc stx (test e ...)))]))))
 
 (define-syntax test/exn:
   (check-top
@@ -1980,6 +1983,7 @@
   ;; bound at the layer represented by the box.
   ;; (displayln (format "Typecheck-defns ~s" (map syntax->datum tl)))
   (let* ([poly-context (cons (gensym) poly-context)]
+         [prnt (debugln (format "TYPECHECK DEFNS" ) )]
          [datatypes (append (filter
                              values
                              (map
@@ -2571,17 +2575,18 @@
                       init-env)]
          [start-env env]
          [let-polys (or orig-let-polys (box null))]
+         [prnt (debugln "TL: ~a" tl )]
          ;; typecheck the sequence:
          [types
           (map
            (lambda (tl)
              (let typecheck ([expr tl] [env env] [tvars-box (box base-tvars)])
-               (debugln (format "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl))
+               (debugln "Typecheck ~s \ntoplevel ~s\n" (syntax->datum (rename expr)) tl)
                (let ([ret (syntax-case (rename expr) (: begin require: define-type: define: define-values:
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
                                                         shared: parameterize:
-                                                        begin: cond: case: if: when: unless:
+                                                        begin: cond: case: if: test: when: unless:
                                                         or: and: set!: trace:
                                                         type-case: quote: quasiquote: time: listof:
                                                         else empty empty:
@@ -2835,6 +2840,22 @@
                                (let ([then-type (typecheck #'then env tvars-box)])
                                  (unify! #'then then-type (typecheck #'els env tvars-box))
                                  then-type))]
+                            ;; Test works like if if there's a string
+                            [(test: desc theExp expected)
+                             (begin
+                               (debugln "TEST CASE")
+                               (unify! #'desc
+                                       (make-str #'desc)
+                                       (typecheck #'desc env tvars-box))
+                               (let ([theExp-type (typecheck #'theExp env tvars-box)])
+                                 (unify! #'theExp theExp-type (typecheck #'expected env tvars-box))
+                                 theExp-type))]
+                            [(test: theExp expected)
+                             (begin
+                               (debugln "TEST CASE")
+                               (let ([theExp-type (typecheck #'theExp env tvars-box)])
+                                 (unify! #'theExp theExp-type (typecheck #'expected env tvars-box))
+                                 theExp-type))]
                             [(when: test e ...)
                              (begin
                                (unify! #'test
@@ -3093,7 +3114,7 @@
                    (define num-locals (- (length env) (length start-env)))
                    (define local-env
                      (take env num-locals))
-                   (debugln "XX: Recording type ~s for pos ~s\n     locals ~s ~n IGNORED: ~s" (pretty-type ret) (syntax-position expr) local-env mutable-ignored-vars)
+                   ;; (debugln "XX: Recording type ~s for pos ~s\n     locals ~s ~n IGNORED: ~s" (pretty-type ret) (syntax-position expr) local-env mutable-ignored-vars)
                    (hash-set! types-for-locs (syntax-position expr) (cons ret local-env))
                    ret))))
            tl)])
@@ -3297,9 +3318,11 @@
                      (cons #'eq? (POLY a (make-arrow #f 
                                                      (list a a)
                                                      B)))
-                     (cons #'test: (POLY a (make-arrow #f 
-                                                       (list STR a a)
-                                                       (make-vd #f))))
+                     ;; (cons #'test: (POLY a (make-arrow #f
+                     ;;                                   (list a a)
+                     ;;                                   (make-vd #f))))
+                    ;; Allows test to have strings or not
+                     ;; (cons #'test: (POLY a a))
 
                      (cons #'test/noerror  (POLY a (make-arrow #f
                                                                (list STR  a)
