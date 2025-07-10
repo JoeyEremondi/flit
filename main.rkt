@@ -689,7 +689,10 @@
      (syntax-case stx ()
        [(_ desc:string e ...) (if lazy?
                       (syntax/loc stx (test (!! e) ...))
-                      (syntax/loc stx (test e ...)))]))))
+                      (syntax/loc stx (test e ...)))]
+       [(_ e e2) (if lazy?
+                      (syntax/loc stx (test (!! e) e2))
+                      (syntax/loc stx (test e e2)))]))))
 
 (define-syntax test/exn:
   (check-top

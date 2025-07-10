@@ -372,7 +372,7 @@ before a @racket[q-form]; that is, @racket['@#,racket[id]] and
 @racket[(@#,racket[quote] id)] are equivalent.
 
 The @racket[quote] form produces a symbol, number, string, boolean,
-list, vector, or box value:
+or list:
 
 @itemlist[
 
@@ -396,9 +396,6 @@ list, vector, or box value:
        vector is immutable, though, so @racket[vector-set!] will not
        work on the vector.}
 
- @item{A @racket[quote]d @tt{#&}@racket[q-form] produces a @tech{box}. The
-       box is immutable, though, so @racket[set-box!] will not work on
-       the box.}
 
 ]
 
@@ -1439,9 +1436,6 @@ Type for the empty @tech{tuple}.}
 
 
 @defform[(Listof type)]{Type for lists of elements, where @racket[type] is the type of one element.}
-@defform[(Boxof type)]{Type for mutable boxes, where @racket[type] is the type of the box's content.}
-@defform[(Vectorof type)]{Type for vectors of elements, where @racket[type] is the type of one element.}
-@defform[(Parameterof type)]{Type for parameters, where @racket[type] is the type of the parameter's value.}
 
 @defform[(Hashof type type)]{
 
