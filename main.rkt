@@ -701,9 +701,12 @@
   (check-top
    (lambda (stx)
      (syntax-case stx ()
-       [(_ desc:string e ...) (if lazy?
-                      (syntax/loc stx (test/exn (!! e) ...))
-                      (syntax/loc stx (test/exn e ...)))]))))
+       [(_ e estr) (if lazy?
+                            (syntax/loc stx (test/exn (!! e) estr))
+                            (syntax/loc stx (test/exn e estr )))]
+       [(_ desc:string e estr) (if lazy?
+                      (syntax/loc stx (test/exn (!! e) estr))
+                      (syntax/loc stx (test/exn e estr)))]))))
 
 ;; Shorthand for making sure a term runs without error
 ;; without caring what it returns
@@ -2586,7 +2589,7 @@
                                                         define-type-alias define-syntax: define-syntax-rule:
                                                         lambda: begin: local: letrec: let: let*: TODO ;;JE
                                                         shared: parameterize:
-                                                        begin: cond: case: if: test: when: unless:
+                                                        begin: cond: case: if: test: test/exn: when: unless:
                                                         or: and: set!: trace:
                                                         type-case: quote: quasiquote: time: listof:
                                                         else empty empty:
@@ -2849,13 +2852,28 @@
                                        (typecheck #'desc env tvars-box))
                                (let ([theExp-type (typecheck #'theExp env tvars-box)])
                                  (unify! #'theExp theExp-type (typecheck #'expected env tvars-box))
-                                 theExp-type))]
+                                 make-vd))]
                             [(test: theExp expected)
                              (begin
                                (debugln "TEST CASE")
                                (let ([theExp-type (typecheck #'theExp env tvars-box)])
                                  (unify! #'theExp theExp-type (typecheck #'expected env tvars-box))
-                                 theExp-type))]
+                                 make-vd))]
+                            [(test/exn: desc theExp msg)
+                             (begin
+                               (debugln "TEST CASE")
+                               (unify! #'desc
+                                       (make-str #'desc)
+                                       (typecheck #'desc env tvars-box))
+                               (let ([theExp-type (typecheck #'theExp env tvars-box)])
+                                 (unify! #'msg (make-str #'msg) (typecheck #'msg env tvars-box))
+                                 (make-vd #f)))]
+                            [(test/exn: theExp msg)
+                             (begin
+                               (debugln "TEST CASE")
+                               (let ([theExp-type (typecheck #'theExp env tvars-box)])
+                                 (unify! #'msg (make-str #'msg) (typecheck #'msg env tvars-box))
+                                 (make-vd #f)))]
                             [(when: test e ...)
                              (begin
                                (unify! #'test
@@ -3327,10 +3345,10 @@
                      (cons #'test/noerror  (POLY a (make-arrow #f
                                                                (list STR  a)
                                                                (make-vd #f))))
-                     (cons #'test/exn: (POLY a (make-arrow #f 
-                                                           (list STR a
-                                                                 STR)
-                                                           (make-vd #f))))
+                     ;; (cons #'test/exn: (POLY a (make-arrow #f
+                     ;;                                       (list STR a
+                     ;;                                             STR)
+                     ;;                                       (make-vd #f))))
                      (cons #'print-only-errors (make-arrow #f 
                                                            (list B)
                                                            (make-vd #f)))
