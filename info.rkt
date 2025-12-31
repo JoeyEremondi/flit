@@ -4,7 +4,8 @@
 
 (define deps '(
                "base"
-               "lazy"))
+               "lazy"
+               "todo-list"))
 (define build-deps '("racket-doc"
                      "rackunit-lib"
                      ["scribble-lib" #:version "1.16"]))
