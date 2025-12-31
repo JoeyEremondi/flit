@@ -13,6 +13,6 @@
 
 (define test-omit-paths '("scribblings/demo.rkt"))
 
-(define version "2026.01.02")
+(define version "2026.01.03")
 
 (define scribblings '(("scribblings/flit.scrbl" (multi-page) (language))))
