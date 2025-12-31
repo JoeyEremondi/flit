@@ -9,7 +9,7 @@
 (define build-deps '("racket-doc"
                      "rackunit-lib"
                      ["scribble-lib" #:version "1.16"]
-                     "todo-list"))
+                     "todo-list-vertical"))
 
 (define test-omit-paths '("scribblings/demo.rkt"))
 
